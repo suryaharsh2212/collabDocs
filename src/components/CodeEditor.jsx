@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import MonacoEditor, { loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import PropTypes from 'prop-types';
+import { MonacoBinding } from 'y-monaco';
 
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
@@ -25,43 +26,31 @@ self.MonacoEnvironment = {
 loader.config({ monaco });
 
 export default function CodeEditor({ ydoc, provider, language }) {
-  const editorRef = useRef(null);
-  const monacoRef = useRef(null);
+  const [editor, setEditor] = useState(null);
   const bindingRef = useRef(null);
 
-  const handleEditorDidMount = (editor, m) => {
-    editorRef.current = editor;
-    monacoRef.current = m;
+  const handleEditorDidMount = (editorInstance) => {
+    setEditor(editorInstance);
   };
 
   useEffect(() => {
-    if (!editorRef.current || !ydoc || !provider) return;
+    if (!editor || !ydoc || !provider) return;
 
-    let binding;
+    // We use 'code' as the shared type name for code rooms
+    const ytext = ydoc.getText('code');
+    
+    // Clean up previous binding if it exists
+    if (bindingRef.current) {
+      bindingRef.current.destroy();
+    }
 
-    const initBinding = async () => {
-      try {
-        const { MonacoBinding } = await import('y-monaco');
-        const ytext = ydoc.getText('code');
-        
-        // Clean up previous binding if it exists
-        if (bindingRef.current) {
-          bindingRef.current.destroy();
-        }
-
-        binding = new MonacoBinding(
-          ytext,
-          editorRef.current.getModel(),
-          new Set([editorRef.current]),
-          provider.awareness
-        );
-        bindingRef.current = binding;
-      } catch (err) {
-        console.error('Failed to initialize MonacoBinding:', err);
-      }
-    };
-
-    initBinding();
+    const binding = new MonacoBinding(
+      ytext,
+      editor.getModel(),
+      new Set([editor]),
+      provider.awareness
+    );
+    bindingRef.current = binding;
 
     return () => {
       if (binding) {
@@ -69,7 +58,7 @@ export default function CodeEditor({ ydoc, provider, language }) {
         bindingRef.current = null;
       }
     };
-  }, [ydoc, provider]);
+  }, [editor, ydoc, provider]);
 
   return (
     <div className="h-full min-h-[500px]">
