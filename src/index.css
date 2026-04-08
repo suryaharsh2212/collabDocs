@@ -1,0 +1,656 @@
+@import "tailwindcss";
+
+/* ============================
+   CollabDocs — Custom Styles
+   Google Fonts loaded via <link> in index.html
+   ============================ */
+
+/* ========================
+   CSS Custom Properties
+   ======================== */
+:root {
+  /* Common transitions */
+  --theme-transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease;
+  
+  /* Accents for user cursors */
+  --cursor-1: #f472b6;
+  --cursor-2: #34d399;
+  --cursor-3: #fbbf24;
+  --cursor-4: #60a5fa;
+  --cursor-5: #a78bfa;
+  --cursor-6: #fb923c;
+  --cursor-7: #2dd4bf;
+  --cursor-8: #f87171;
+}
+
+:root:not(.light) {
+  --brand-500: #6366f1;
+  --brand-600: #4f46e5;
+  --surface-0: #020617;
+  --surface-1: #030712;
+  --surface-2: #0f172a;
+  --surface-3: #1e293b;
+  --surface-4: #334155;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --glass-bg: rgba(3, 7, 18, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+:root.light {
+  --brand-500: #10b981; /* Emerald Accent for Light Mode */
+  --brand-600: #059669;
+  --surface-0: #f8fafc;
+  --surface-1: #ffffff;
+  --surface-2: #f1f5f9;
+  --surface-3: #e2e8f0;
+  --surface-4: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(16, 185, 129, 0.1);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* ========================
+   Base Resets
+   ======================== */
+/* * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+} */
+
+html {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: var(--theme-transition);
+}
+
+body {
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: var(--theme-transition);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========================
+   Custom Scrollbar
+   ======================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-4);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-600);
+}
+
+/* ========================
+   Glassmorphism Card
+   ======================== */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ========================
+   Gradient Backgrounds
+   ======================== */
+.bg-gradient-hero {
+  background: linear-gradient(135deg, var(--surface-0) 0%, #0f172a 50%, #1e1b4b 100%);
+}
+
+.bg-gradient-brand {
+  background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-500) 50%, #7c3aed 100%);
+}
+
+.bg-gradient-glow {
+  position: relative;
+}
+
+.bg-gradient-glow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ========================
+   TipTap Editor Styles
+   ======================== */
+.tiptap-editor .ProseMirror {
+  min-height: 1000px; /* Encourages A4 feel */
+  padding: 4rem 5rem; /* Standard document gutters */
+  outline: none;
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: var(--text-primary);
+  background: var(--surface-1);
+}
+
+/* ========================
+   PDF Paper Layout
+   ======================== */
+.doc-workspace {
+  background: var(--surface-0);
+  background-image: radial-gradient(circle at center, var(--surface-2) 0%, transparent 80%);
+  display: flex;
+  justify-content: center;
+  padding: 3rem 1rem;
+  min-height: 100%;
+}
+
+.doc-paper {
+  width: 816px; /* A4 Width at 96 DPI */
+  background: var(--surface-1);
+  box-shadow: 0 0 0 1px var(--surface-3), 0 20px 50px rgba(0, 0, 0, 0.5);
+  border-radius: 4px;
+  position: relative;
+  transition: box-shadow 0.3s ease;
+}
+
+.doc-paper:hover {
+  box-shadow: 0 0 0 1px var(--brand-500)/30, 0 30px 60px rgba(0, 0, 0, 0.6);
+}
+
+.doc-paper-header {
+  padding: 4rem 5rem 1rem 5rem;
+  background: var(--surface-1);
+  border-radius: 4px 4px 0 0;
+}
+
+/* ========================
+   Chat Notification
+   ======================== */
+.chat-notification-pill {
+  background: var(--brand-600);
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-500));
+  color: white;
+  padding: 4px 12px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  cursor: pointer;
+  animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  white-space: nowrap;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-notification-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.5);
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.tiptap-editor .ProseMirror p {
+  margin-bottom: 0.75rem;
+}
+
+.tiptap-editor .ProseMirror h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: white;
+}
+
+.tiptap-editor .ProseMirror h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: white;
+}
+
+.tiptap-editor .ProseMirror h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: white;
+}
+
+.tiptap-editor .ProseMirror ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap-editor .ProseMirror ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tiptap-editor .ProseMirror code {
+  background: var(--surface-3);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  color: var(--brand-300);
+}
+
+/* Syntax Highlighting Base */
+.tiptap-editor .ProseMirror pre {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid var(--surface-3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  position: relative;
+}
+
+.tiptap-editor .ProseMirror pre code {
+  background: transparent;
+  padding: 0;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+/* Notion-style Callout Box */
+.tiptap-editor .ProseMirror blockquote {
+  background: var(--surface-1);
+  border: 1px solid var(--surface-3);
+  border-left: 4px solid var(--brand-500);
+  border-radius: 6px;
+  padding: 0.75rem 1.25rem;
+  margin-left: 0;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  font-style: normal;
+  display: flex;
+  flex-direction: column;
+}
+
+.tiptap-editor .ProseMirror blockquote::before {
+  content: '💡 Note';
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--brand-400);
+  margin-bottom: 0.5rem;
+}
+
+/* Image Embeds */
+.tiptap-editor .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--surface-3);
+  display: block;
+}
+
+.tiptap-editor .ProseMirror img.ProseMirror-selectednode {
+  outline: 3px solid var(--brand-500);
+}
+
+/* Syntax Highlighting Tokens (Lowlight) */
+.hljs-keyword, .hljs-built_in, .hljs-selector-tag { color: #569cd6; }
+.hljs-string, .hljs-symbol, .hljs-bullet, .hljs-addition { color: #ce9178; }
+.hljs-title, .hljs-section { color: #dcdcaa; }
+.hljs-comment, .hljs-quote, .hljs-deletion { color: #6a9955; }
+.hljs-number, .hljs-literal, .hljs-type { color: #b5cea8; }
+.hljs-operator, .hljs-punctuation { color: #d4d4d4; }
+
+.tiptap-editor .ProseMirror strong {
+  font-weight: 700;
+  color: white;
+}
+
+.tiptap-editor .ProseMirror em {
+  font-style: italic;
+}
+
+/* Tables */
+.tiptap-editor .ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  border-radius: 4px;
+}
+
+.tiptap-editor .ProseMirror table td,
+.tiptap-editor .ProseMirror table th {
+  min-width: 1em;
+  border: 1px solid var(--surface-4);
+  padding: 8px 12px;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.tiptap-editor .ProseMirror table th {
+  font-weight: 600;
+  text-align: left;
+  background-color: var(--surface-2);
+  color: white;
+}
+
+/* Task Lists */
+.tiptap-editor .ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.25rem;
+  user-select: none;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--brand-500);
+  cursor: pointer;
+}
+
+.tiptap-editor .ProseMirror ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+}
+
+/* Highlights */
+.tiptap-editor .ProseMirror mark {
+  background-color: rgba(234, 179, 8, 0.4);
+  color: inherit;
+  padding: 0.125em 0.2em;
+  border-radius: 0.25em;
+  box-decoration-break: clone;
+}
+
+/* Collaboration cursor label */
+.collaboration-cursor__caret {
+  position: relative;
+  margin-left: -1px;
+  margin-right: -1px;
+  border-left: 2px solid;
+  word-break: normal;
+  pointer-events: none;
+}
+
+.collaboration-cursor__label {
+  position: absolute;
+  top: -1.5em;
+  left: -1px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px 4px 4px 0;
+  white-space: nowrap;
+  color: #0b0d17;
+  user-select: none;
+  pointer-events: none;
+  line-height: 1.2;
+}
+
+/* ========================
+   Animation Keyframes
+   ======================== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Utility animation classes */
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.3s ease-out forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.05) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ========================
+   Toast Notification
+   ======================== */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  z-index: 9999;
+  animation: slideUp 0.3s ease-out, fadeIn 0.3s ease-out;
+}
+
+.toast-success {
+  background: rgba(52, 211, 153, 0.15);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: #34d399;
+}
+
+.toast-error {
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: #f87171;
+}
+
+/* ========================
+   Button Base Styles
+   ======================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  outline: none;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-500));
+  color: white;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--brand-500), #7c3aed);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--surface-3);
+  color: var(--text-primary);
+  border: 1px solid var(--surface-4);
+}
+
+.btn-secondary:hover {
+  background: var(--surface-4);
+  border-color: var(--brand-500);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.btn-icon {
+  padding: 0.5rem;
+  border-radius: 8px;
+}
+
+/* ========================
+   Input Styles
+   ======================== */
+.input {
+  padding: 0.65rem 1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--surface-4);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.input:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ========================
+   Tooltip
+   ======================== */
+.tooltip-wrapper {
+  position: relative;
+}
+
+.tooltip-wrapper::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  padding: 0.35rem 0.65rem;
+  background: var(--surface-3);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.15s ease;
+  z-index: 50;
+}
+
+.tooltip-wrapper:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}

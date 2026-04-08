@@ -1,0 +1,30 @@
+import { Extension } from '@tiptap/core';
+import Suggestion from '@tiptap/suggestion';
+import suggestionOptions from './suggestion';
+
+export const SlashCommands = Extension.create({
+  name: 'slashCommands',
+
+  addOptions() {
+    return {
+      suggestion: {
+        char: '/',
+        command: ({ editor, range, props }) => {
+          props.command({ editor, range });
+        },
+      },
+    };
+  },
+
+  addProseMirrorPlugins() {
+    return [
+      Suggestion({
+        editor: this.editor,
+        ...this.options.suggestion,
+        ...suggestionOptions
+      }),
+    ];
+  },
+});
+
+export default SlashCommands;
