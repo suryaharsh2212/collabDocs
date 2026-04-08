@@ -9,7 +9,7 @@ import {
 import { db } from '../lib/firebase';
 import { useAuth } from './useAuth';
 
-export function useRoom(roomId) {
+export function useRoom(roomId, initialType = 'doc') {
   const [room, setRoom] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,7 +45,8 @@ export function useRoom(roomId) {
         } else {
           // Room doesn't exist — create it
           const newRoom = {
-            title: 'Untitled Document',
+            title: initialType === 'code' ? 'Untitled Code Snippet' : 'Untitled Document',
+            type: initialType,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             createdBy: user ? user.uid : null, // Set owner to current user (even if anonymous)
@@ -62,7 +63,8 @@ export function useRoom(roomId) {
           // Default state on failure so editor still works locally
           setRoom({
             id: roomId,
-            title: 'Untitled Document',
+            title: initialType === 'code' ? 'Untitled Code Snippet' : 'Untitled Document',
+            type: initialType,
             createdAt: new Date(),
           });
         }
@@ -76,7 +78,7 @@ export function useRoom(roomId) {
     return () => {
       cancelled = true;
     };
-  }, [roomId, authLoading, user?.uid]);
+  }, [roomId, authLoading, user?.uid, initialType]);
 
   const updateTitle = useCallback(async (newTitle) => {
     if (!roomId || newTitle === room?.title) return;
@@ -106,12 +108,27 @@ export function useRoom(roomId) {
     }
   }, [roomId]);
 
+  const updateRoomType = useCallback(async (type) => {
+    if (!roomId) return;
+    try {
+      const roomRef = doc(db, 'rooms', roomId);
+      await updateDoc(roomRef, {
+        type: type,
+        updatedAt: serverTimestamp(),
+      });
+      setRoom((prev) => prev ? { ...prev, type } : prev);
+    } catch (err) {
+      console.error('Failed to update room type:', err);
+    }
+  }, [roomId]);
+
   return {
     room,
     loading,
     error,
     updateTitle,
     updateContent,
+    updateRoomType,
   };
 }
 

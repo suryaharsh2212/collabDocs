@@ -11,9 +11,13 @@
  */
 import { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
+import { FileText, Code, Share2, Download, MessageSquare, LogOut, Play } from 'lucide-react';
 
 export default function Toolbar({
-  editorMode,
+  isCodePage = false,
+  codeLanguage,
+  onLanguageChange,
+  onRun,
   tiptapEditor,
   onExport,
   onToggleChat,
@@ -64,17 +68,18 @@ export default function Toolbar({
   return (
     <div className="sticky top-0 z-40 glass border-b border-[var(--glass-border)]">
       <div className="flex items-center justify-between px-4 py-2 gap-3">
-        {/* Left section: Logo + Mode Toggle */}
+        {/* Left section: Logo + Title */}
         <div className="flex items-center gap-4">
           {/* Back to home */}
           <a
             href="/"
             className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-white transition-colors"
           >
-            <div className="w-7 h-7 rounded-md bg-gradient-brand flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                <polyline points="14,2 14,8 20,8" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center shadow-md">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                <path d="M6 8h2"/><path d="M6 12h2"/><path d="M16 8h2"/><path d="M16 12h2"/>
               </svg>
             </div>
           </a>
@@ -82,37 +87,65 @@ export default function Toolbar({
           {/* Separator */}
           <div className="w-px h-6 bg-[var(--surface-4)]" />
 
-          {/* Mode Toggle */}
+          {/* Page Type Badge */}
           <div className="flex items-center bg-[var(--surface-2)] rounded-lg p-0.5 border border-[var(--surface-4)]">
-            <button
-              onClick={() => onModeChange('richtext')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                editorMode === 'richtext'
-                  ? 'bg-indigo-500/20 text-indigo-300 shadow-sm'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-              }`}
-              id="mode-richtext-btn"
-            >
-              ✍️ Rich Text
-            </button>
-            <button
-              onClick={() => onModeChange('code')}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                editorMode === 'code'
-                  ? 'bg-indigo-500/20 text-indigo-300 shadow-sm'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-              }`}
-              id="mode-code-btn"
-            >
-              💻 Code
-            </button>
+            {isCodePage ? (
+              <span className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-500/20 text-indigo-300 shadow-sm cursor-default">
+                <Code size={14} strokeWidth={2.5} />
+                Code Environment
+              </span>
+            ) : (
+              <span className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-500/20 text-indigo-300 shadow-sm cursor-default">
+                <FileText size={14} strokeWidth={2.5} />
+                Document Workspace
+              </span>
+            )}
           </div>
 
           {/* Separator */}
-          <div className="w-px h-6 bg-[var(--surface-4)]" />
+          <div className="w-px h-6 bg-[var(--surface-4)] hidden sm:block" />
+
+          {/* Code Tools — only visible in code mode */}
+          {isCodePage && (
+            <div className="flex items-center gap-3 animate-fade-in pl-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest hidden sm:block">Language</span>
+                <select
+                  value={codeLanguage}
+                  onChange={(e) => onLanguageChange(e.target.value)}
+                  className="bg-[var(--surface-2)] text-[var(--text-primary)] text-xs font-bold px-3 py-1.5 rounded-md border border-[var(--surface-4)] focus:outline-none focus:border-[var(--brand-500)] transition-all cursor-pointer hover:bg-[var(--surface-3)]"
+                >
+                  <option value="javascript">JavaScript</option>
+                  <option value="typescript">TypeScript</option>
+                  <option value="python">Python</option>
+                  <option value="html">HTML</option>
+                  <option value="css">CSS</option>
+                  <option value="cpp">C++</option>
+                  <option value="java">Java</option>
+                  <option value="json">JSON</option>
+                  <option value="markdown">Markdown</option>
+                  <option value="sql">SQL</option>
+                  <option value="yaml">YAML</option>
+                </select>
+              </div>
+
+              <div className="w-px h-5 bg-[var(--surface-4)] mx-1" />
+
+              <button
+                onClick={onRun}
+                disabled={codeLanguage !== 'javascript'}
+                className="btn btn-primary text-xs bg-emerald-600 hover:bg-emerald-500 border-none shadow-emerald-600/20 shadow-md"
+                title={codeLanguage !== 'javascript' ? 'Only JavaScript execution is currently supported' : 'Run JavaScript'}
+                id="run-code-btn"
+              >
+                <Play size={14} fill="currentColor" />
+                Run
+              </button>
+            </div>
+          )}
 
           {/* Rich Text Formatting Buttons — only visible in richtext mode */}
-          {editorMode === 'richtext' && tiptapEditor && (
+          {!isCodePage && tiptapEditor && (
             <div className="flex items-center gap-1 animate-fade-in">
               <FormatButton
                 icon={<span className="font-bold">B</span>}

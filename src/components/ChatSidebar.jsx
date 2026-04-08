@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export default function ChatSidebar({ ydoc, user, onClose }) {
+export default function ChatSidebar({ ydoc, provider, user, onClose }) {
   const [messages, setMessages] = useState([]);
   const [inputVal, setInputVal] = useState('');
   const messagesEndRef = useRef(null);
@@ -20,20 +20,21 @@ export default function ChatSidebar({ ydoc, user, onClose }) {
 
   const handleSend = (e) => {
     e.preventDefault();
-    if (!inputVal.trim() || !ydoc) return;
+    if (!inputVal.trim() || !ydoc || !provider) return;
     ydoc.getArray('chatMessages').push([{
       id: Date.now().toString(),
       text: inputVal.trim(),
       author: user?.displayName || 'Guest',
       uid: user?.uid || 'guest-id',
+      senderId: provider.awareness.clientID,
       timestamp: new Date().toISOString(),
     }]);
     setInputVal('');
   };
 
   const isOwn = (msg) => {
-    if (!user) return msg.author === 'Guest';
-    return msg.uid === user.uid || msg.author === (user.displayName || 'User');
+    if (!provider) return false;
+    return msg.senderId === provider.awareness.clientID;
   };
 
   return (

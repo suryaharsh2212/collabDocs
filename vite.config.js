@@ -17,4 +17,8 @@ export default defineConfig({
       },
     },
   },
+  optimizeDeps: {
+    include: ['monaco-editor', 'y-monaco'],
+  },
 })
+

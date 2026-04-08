@@ -5,7 +5,7 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import TurndownService from 'turndown';
 
-export default function ExportPanel({ getHTML, getWordCount, title, onClose }) {
+export default function ExportPanel({ getHTML, getWordCount, title, onClose, isCode = false }) {
   const [exporting, setExporting] = useState(null);
   const wordCount = getWordCount();
 
@@ -32,15 +32,15 @@ export default function ExportPanel({ getHTML, getWordCount, title, onClose }) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title || 'CollabDocs Export'}</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #1a1a1a; }
-    pre { background: #f5f5f5; padding: 1rem; border-radius: 8px; overflow-x: auto; }
-    code { background: #f0f0f0; padding: 0.15rem 0.3rem; border-radius: 3px; font-family: monospace; }
+    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #1a1a1a; }
+    pre { background: #1e1e1e; color: #d4d4d4; padding: 1.5rem; border-radius: 8px; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 14px; }
+    code { font-family: inherit; }
     blockquote { border-left: 3px solid #6366f1; padding-left: 1rem; color: #666; font-style: italic; }
     h1, h2, h3 { margin-top: 1.5rem; margin-bottom: 0.5rem; }
   </style>
 </head>
 <body>
-  <h1 style="text-align: center; border-bottom: 1px solid #ccc; padding-bottom: 10px;">${title}</h1>
+  <h1 style="text-align: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 30px; font-family: sans-serif;">${title}</h1>
   ${html}
 </body>
 </html>`;
@@ -55,12 +55,23 @@ export default function ExportPanel({ getHTML, getWordCount, title, onClose }) {
     setExporting('markdown');
     try {
       const html = getHTML();
-      const turndown = new TurndownService({
-        headingStyle: 'atx',
-        codeBlockStyle: 'fenced',
-        bulletListMarker: '-',
-      });
-      const markdown = `# ${title}\n\n${turndown.turndown(html)}`;
+      let markdown = '';
+      
+      if (isCode) {
+        // Extract plain code from the pre/code wrapper if it's code mode
+        const div = document.createElement('div');
+        div.innerHTML = html;
+        const codeText = div.innerText || div.textContent;
+        markdown = `# ${title}\n\n\`\`\`\n${codeText}\n\`\`\``;
+      } else {
+        const turndown = new TurndownService({
+          headingStyle: 'atx',
+          codeBlockStyle: 'fenced',
+          bulletListMarker: '-',
+        });
+        markdown = `# ${title}\n\n${turndown.turndown(html)}`;
+      }
+      
       downloadFile(markdown, `${title || 'export'}.md`, 'text/markdown');
     } finally {
       setExporting(null);
@@ -108,7 +119,7 @@ export default function ExportPanel({ getHTML, getWordCount, title, onClose }) {
     {
       id: 'html',
       label: 'HTML',
-      description: 'Clean HTML document',
+      description: isCode ? 'Clean HTML snippet' : 'Clean HTML document',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="16 18 22 12 16 6" />
@@ -121,7 +132,7 @@ export default function ExportPanel({ getHTML, getWordCount, title, onClose }) {
     {
       id: 'markdown',
       label: 'Markdown',
-      description: 'Raw Markdown (.md)',
+      description: isCode ? 'Standard Markdown (.md)' : 'Raw Markdown (.md)',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
@@ -136,7 +147,7 @@ export default function ExportPanel({ getHTML, getWordCount, title, onClose }) {
     {
       id: 'pdf',
       label: 'PDF',
-      description: 'Printable PDF document',
+      description: isCode ? 'Export code to PDF' : 'Printable PDF document',
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
@@ -157,7 +168,7 @@ export default function ExportPanel({ getHTML, getWordCount, title, onClose }) {
       <div className="relative glass rounded-2xl p-6 w-full max-w-md animate-fade-in-scale">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold text-white">Export Document</h2>
+          <h2 className="text-lg font-bold text-white">{isCode ? 'Export Snippet' : 'Export Document'}</h2>
           <button onClick={onClose} className="btn btn-ghost btn-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -168,11 +179,11 @@ export default function ExportPanel({ getHTML, getWordCount, title, onClose }) {
 
         {/* Info Box */}
         <div className="mb-6 p-4 rounded-xl bg-[var(--surface-1)] border border-[var(--surface-3)]">
-          <p className="text-white font-medium mb-1 truncate" title={title}>{title || 'Untitled Document'}</p>
+          <p className="text-white font-medium mb-1 truncate" title={title}>{title || 'Untitled Session'}</p>
           <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-            <span>~{wordCount} words</span>
+            <span>{isCode ? `~${wordCount} lines` : `~${wordCount} words`}</span>
             <span>•</span>
-            <span>Rich text export</span>
+            <span>{isCode ? 'Code export' : 'Rich text export'}</span>
           </div>
         </div>
 
@@ -233,4 +244,5 @@ ExportPanel.propTypes = {
   getWordCount: PropTypes.func.isRequired,
   title: PropTypes.string.isRequired,
   onClose: PropTypes.func.isRequired,
+  isCode: PropTypes.bool,
 };

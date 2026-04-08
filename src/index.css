@@ -654,3 +654,48 @@ body {
   opacity: 1;
   transform: translateX(-50%) scale(1);
 }
+/* ========================
+   Monaco Remote Cursors (y-monaco)
+   Premium Real-time Presence
+   ======================== */
+.yRemoteCursor {
+  position: absolute;
+  height: 1.4em;
+  border-left: 2px solid;
+  transition: opacity 0.3s ease;
+}
+
+.yRemoteCursor-label {
+  position: absolute;
+  top: -1.4em;
+  left: -1px;
+  padding: 2px 8px;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  color: #020617; /* Dark text for high contrast on colored labels */
+  border-radius: 6px 6px 6px 0;
+  user-select: none;
+  line-height: normal;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  animation: slideInBottom 0.2s ease-out;
+}
+
+.yRemoteSelection {
+  opacity: 0.25;
+  transition: opacity 0.3s ease;
+}
+
+/* Cursor Fade Effect when inactive */
+.yRemoteCursor.yRemoteCursor-inactive {
+  opacity: 0.5;
+}
+
+@keyframes slideInBottom {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

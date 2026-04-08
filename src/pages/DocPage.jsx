@@ -25,43 +25,35 @@ export default function DocPage() {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading, signInWithGoogle, signOutUser } = useAuth();
-  const { room, loading: roomLoading, updateTitle, updateContent } = useRoom(roomId);
+  const { room, loading: roomLoading, updateTitle, updateContent, updateRoomType } = useRoom(roomId, 'doc');
 
-  // Editor mode: 'richtext' or 'code'
-  const [editorMode, setEditorMode] = useState('richtext');
+  useEffect(() => {
+    if (room && room.type !== 'doc') {
+      updateRoomType('doc');
+    }
+  }, [room?.type, updateRoomType]);
 
-  // Export panel visibility
   const [showExport, setShowExport] = useState(false);
-
-  // Chat panel visibility
   const [showChat, setShowChat] = useState(false);
   const [showSnippets, setShowSnippets] = useState(false);
-
-  // TipTap editor ref — set by Editor component for Toolbar formatting commands
   const [tiptapEditor, setTiptapEditor] = useState(null);
   
-  // Notification state
   const [lastChatMessage, setLastChatMessage] = useState(null);
   const [showChatNotif, setShowChatNotif] = useState(false);
-
-  // Editable title state
   const [localTitle, setLocalTitle] = useState('');
 
-  // Sync local title when room data updates
   useEffect(() => {
     if (room?.title) {
       setLocalTitle(room.title);
     }
   }, [room?.title]);
 
-  // Initialize Yjs with user info
   const userInfo = {
     name: user?.displayName || 'Guest',
-    color: undefined, // auto-assigned based on clientID
+    color: undefined,
   };
   const { ydoc, provider, connectedUsers, isConnected, updateUser } = useYjs(roomId, userInfo);
 
-  // Update Yjs awareness when user signs in/out
   useEffect(() => {
     if (user) {
       updateUser({ name: user.displayName || 'User' });
@@ -84,7 +76,6 @@ export default function DocPage() {
     }
   };
 
-  // Get the HTML content from TipTap for exports
   const getEditorHTML = () => {
     if (tiptapEditor) {
       return tiptapEditor.getHTML();
@@ -92,7 +83,6 @@ export default function DocPage() {
     return '<p>No content</p>';
   };
 
-  // Word count calculation
   const getWordCount = () => {
     if (tiptapEditor) {
       const text = tiptapEditor.getText();
@@ -101,14 +91,12 @@ export default function DocPage() {
     return 0;
   };
 
-  // Redirect unauthorized users to home with redirect intent
   useEffect(() => {
     if (!authLoading && !user) {
       navigate(`/?redirect=${roomId}`, { replace: true });
     }
   }, [authLoading, user, navigate, roomId]);
 
-  // Handle Smart Templates Injection
   useEffect(() => {
     const handleMagicFormat = () => {
       if (!tiptapEditor) return;
@@ -119,7 +107,6 @@ export default function DocPage() {
 
       lines.forEach(line => {
         const trimmed = line.trim();
-        // Pattern: api [name] [method] [params...]
         const apiMatch = trimmed.match(/^api\s+(\S+)\s+(get|post|put|delete|patch)\s*(.*)$/i);
         
         if (apiMatch) {
@@ -153,16 +140,13 @@ export default function DocPage() {
     return () => window.removeEventListener('collabdocs:magic-format', handleMagicFormat);
   }, [tiptapEditor]);
 
-  // Handle Smart Templates Injection
   useEffect(() => {
     if (tiptapEditor) {
       const params = new URLSearchParams(window.location.search);
       const templateId = params.get('template');
       
-      // If no template requested, do nothing
       if (!templateId) return;
 
-      // Check if document is basically empty (allowing for trailing spaces/newlines)
       const isBlank = tiptapEditor.isEmpty || tiptapEditor.getText().trim().length === 0;
 
       if (isBlank) {
@@ -170,28 +154,23 @@ export default function DocPage() {
         if (template && template.html) {
           tiptapEditor.commands.setContent(template.html);
         }
-        
-        // Wipe the template from the URL so it doesn't re-inject on accidental unmounts/refreshes
         window.history.replaceState({}, '', `/doc/${roomId}`);
       }
     }
   }, [tiptapEditor, roomId]);
 
-  // Handle Periodic Content Persistence (Auto-save to Firestore)
   useEffect(() => {
     if (!tiptapEditor) return;
 
     let timeoutId;
 
     const handleUpdate = () => {
-      // Debounce the save operation to 3 seconds after last type
       if (timeoutId) clearTimeout(timeoutId);
       
       timeoutId = setTimeout(() => {
         const html = tiptapEditor.getHTML();
         const textSnippet = tiptapEditor.getText().substring(0, 150);
         updateContent(html, textSnippet);
-        console.log('Document auto-saved to Firestore');
       }, 3000);
     };
 
@@ -203,25 +182,20 @@ export default function DocPage() {
     };
   }, [tiptapEditor, updateContent]);
 
-  // Handle Chat Notifications
   useEffect(() => {
     if (!ydoc) return;
     const ychat = ydoc.getArray('chatMessages');
     
     const observer = (event) => {
-      // Only trigger if we aren't already looking at the chat
       if (showChat) return;
 
       const added = event.changes.added;
       if (added.size > 0) {
         const lastMsg = ychat.get(ychat.length - 1);
         
-        // Don't notify if it's our own message
-        if (lastMsg && lastMsg.uid !== user?.uid) {
+        if (lastMsg && lastMsg.senderId !== provider?.awareness.clientID) {
           setLastChatMessage(lastMsg);
           setShowChatNotif(true);
-          
-          // Auto-hide after 6 seconds
           const timer = setTimeout(() => setShowChatNotif(false), 6000);
           return () => clearTimeout(timer);
         }
@@ -230,9 +204,8 @@ export default function DocPage() {
 
     ychat.observe(observer);
     return () => ychat.unobserve(observer);
-  }, [ydoc, showChat, user?.uid]);
+  }, [ydoc, showChat, provider?.awareness.clientID]);
 
-  // Clear notification when chat opens
   useEffect(() => {
     if (showChat) setShowChatNotif(false);
   }, [showChat]);
@@ -250,10 +223,8 @@ export default function DocPage() {
 
   return (
     <div className="min-h-screen bg-[var(--surface-0)] flex flex-col">
-      {/* Toolbar */}
       <Toolbar
-        editorMode={editorMode}
-        onModeChange={setEditorMode}
+        isCodePage={false}
         tiptapEditor={tiptapEditor}
         onExport={() => setShowExport(true)}
         onToggleChat={() => {
@@ -270,11 +241,8 @@ export default function DocPage() {
         roomId={roomId}
       />
 
-      {/* Workspace Area: Editor + Sidebar */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Main editor area */}
         <div className="flex-1 relative flex flex-col min-w-0">
-          {/* Connection status */}
           <div className="px-4 py-1.5 flex items-center justify-between text-xs border-b border-[var(--surface-3)]">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
@@ -289,7 +257,6 @@ export default function DocPage() {
               </span>
             </div>
 
-            {/* User presence - inline on status bar */}
             <div className="flex items-center gap-4">
               {showChatNotif && lastChatMessage && (
                 <div 
@@ -310,41 +277,29 @@ export default function DocPage() {
             </div>
           </div>
 
-          {/* Editor - Scrollable Workspace */}
           <div className="flex-1 overflow-auto flex flex-col bg-[var(--surface-0)]">
             {ydoc && provider ? (
-              <div className={editorMode === 'richtext' ? 'doc-workspace' : 'flex-1 flex flex-col'}>
-                {editorMode === 'richtext' ? (
-                  <div className="doc-paper animate-fade-in">
-                    <div className="doc-paper-header">
-                      <input
-                        type="text"
-                        value={localTitle}
-                        onChange={(e) => setLocalTitle(e.target.value)}
-                        onBlur={handleTitleBlur}
-                        onKeyDown={handleTitleKeyDown}
-                        className="text-4xl font-black bg-transparent border-none outline-none text-white w-full placeholder-[var(--text-muted)] focus:ring-0 text-left"
-                        placeholder="Document Title"
-                        id="doc-title-input"
-                      />
-                    </div>
-                    <Editor
-                      mode="richtext"
-                      ydoc={ydoc}
-                      provider={provider}
-                      roomId={roomId}
-                      onEditorReady={setTiptapEditor}
+              <div className="doc-workspace">
+                <div className="doc-paper animate-fade-in">
+                  <div className="doc-paper-header">
+                    <input
+                      type="text"
+                      value={localTitle}
+                      onChange={(e) => setLocalTitle(e.target.value)}
+                      onBlur={handleTitleBlur}
+                      onKeyDown={handleTitleKeyDown}
+                      className="text-4xl font-black bg-transparent border-none outline-none text-white w-full placeholder-[var(--text-muted)] focus:ring-0 text-left"
+                      placeholder="Document Title"
+                      id="doc-title-input"
                     />
                   </div>
-                ) : (
                   <Editor
-                    mode="code"
                     ydoc={ydoc}
                     provider={provider}
                     roomId={roomId}
                     onEditorReady={setTiptapEditor}
                   />
-                )}
+                </div>
               </div>
             ) : (
               <div className="flex-1 flex items-center justify-center min-h-[400px]">
@@ -358,10 +313,10 @@ export default function DocPage() {
         </div>
       </div>
 
-      {/* Persistent Floating Overlays (Z-Index Managed) */}
       {showChat && (
         <ChatSidebar
           ydoc={ydoc}
+          provider={provider}
           user={user}
           onClose={() => setShowChat(false)}
         />
@@ -374,7 +329,6 @@ export default function DocPage() {
         />
       )}
 
-      {/* Export Panel Modal */}
       {showExport && (
         <ExportPanel
           getHTML={getEditorHTML}
