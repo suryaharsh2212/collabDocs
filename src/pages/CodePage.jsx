@@ -8,6 +8,8 @@ import CodeEditor from '../components/CodeEditor';
 import UserPresence from '../components/UserPresence';
 import ChatSidebar from '../components/ChatSidebar';
 import ExecutionConsole from '../components/ExecutionConsole';
+import ExportPanel from '../components/ExportPanel';
+import LoginRequired from '../components/LoginRequired';
 
 export default function CodePage() {
   const { roomId } = useParams();
@@ -79,11 +81,12 @@ export default function CodePage() {
     return code.split('\n').length;
   };
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate(`/?redirect=${roomId}&type=code`, { replace: true });
-    }
-  }, [authLoading, user, navigate, roomId]);
+  // We no longer redirect automatically
+  // useEffect(() => {
+  //   if (!authLoading && !user) {
+  //     navigate(`/?redirect=${roomId}&type=code`, { replace: true });
+  //   }
+  // }, [authLoading, user, navigate, roomId]);
 
   // Chat Notifications
   useEffect(() => {
@@ -151,14 +154,19 @@ export default function CodePage() {
     }
   };
 
-  if (authLoading || (!authLoading && !user)) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[var(--surface-0)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-[var(--text-muted)]">Verifying session...</p>
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    return <LoginRequired onSignIn={signInWithGoogle} title={room?.title || 'this session'} />;
   }
 
   return (

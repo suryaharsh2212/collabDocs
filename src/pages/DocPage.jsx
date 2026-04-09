@@ -20,6 +20,7 @@ import UserPresence from '../components/UserPresence';
 import ExportPanel from '../components/ExportPanel';
 import ChatSidebar from '../components/ChatSidebar';
 import SnippetSidebar from '../components/SnippetSidebar';
+import LoginRequired from '../components/LoginRequired';
 
 export default function DocPage() {
   const { roomId } = useParams();
@@ -91,11 +92,12 @@ export default function DocPage() {
     return 0;
   };
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate(`/?redirect=${roomId}`, { replace: true });
-    }
-  }, [authLoading, user, navigate, roomId]);
+  // We no longer redirect automatically, we show the LoginRequired component instead
+  // useEffect(() => {
+  //   if (!authLoading && !user) {
+  //     navigate(`/?redirect=${roomId}`, { replace: true });
+  //   }
+  // }, [authLoading, user, navigate, roomId]);
 
   useEffect(() => {
     const handleMagicFormat = () => {
@@ -210,7 +212,7 @@ export default function DocPage() {
     if (showChat) setShowChatNotif(false);
   }, [showChat]);
 
-  if (authLoading || (!authLoading && !user)) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[var(--surface-0)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -219,6 +221,10 @@ export default function DocPage() {
         </div>
       </div>
     );
+  }
+
+  if (!user) {
+    return <LoginRequired onSignIn={signInWithGoogle} title={room?.title || 'this document'} />;
   }
 
   return (

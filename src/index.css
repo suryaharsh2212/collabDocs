@@ -663,18 +663,19 @@ body {
   height: 1.4em;
   border-left: 2px solid;
   transition: opacity 0.3s ease;
+  z-index: 10;
 }
 
 .yRemoteCursor-label {
   position: absolute;
-  top: -1.4em;
+  top: -1.6em;
   left: -1px;
   padding: 2px 8px;
   font-family: 'Outfit', 'Inter', sans-serif;
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
-  color: #020617; /* Dark text for high contrast on colored labels */
+  color: #020617 !important;
   border-radius: 6px 6px 6px 0;
   user-select: none;
   line-height: normal;
@@ -684,18 +685,63 @@ body {
   animation: slideInBottom 0.2s ease-out;
 }
 
+/* Add a small arrow pointing down from the label */
+.yRemoteCursor-label::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid currentColor;
+  opacity: 0.8;
+}
+
 .yRemoteSelection {
   opacity: 0.25;
   transition: opacity 0.3s ease;
 }
 
-/* Cursor Fade Effect when inactive */
-.yRemoteCursor.yRemoteCursor-inactive {
-  opacity: 0.5;
+/* Pulsating effect for active remote cursors */
+.yRemoteCursor::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  background: currentColor;
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: pulse-presence 1.5s infinite;
+}
+
+@keyframes pulse-presence {
+  0% { transform: scale(0.5); opacity: 0.8; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* 
+   IMPORTANT: Monaco hides overflow on lines by default. 
+   We must force visibility for the names to be seen above the lines.
+*/
+.monaco-editor .view-lines {
+  overflow: visible !important;
+}
+
+
+.monaco-editor .view-line {
+  z-index: 1;
+}
+
+/* Selection background color management */
+.yRemoteSelection {
+  background-color: var(--selection-color, rgba(99, 102, 241, 0.3));
 }
 
 @keyframes slideInBottom {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
 
