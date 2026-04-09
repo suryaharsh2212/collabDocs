@@ -72,7 +72,7 @@ export default function Toolbar({
         <div className="flex items-center gap-4">
           {/* Back to home */}
           <a
-            href="/"
+            href="/home"
             className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-white transition-colors"
           >
             <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center shadow-md">

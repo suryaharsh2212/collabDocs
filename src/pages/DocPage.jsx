@@ -146,20 +146,29 @@ export default function DocPage() {
     if (tiptapEditor) {
       const params = new URLSearchParams(window.location.search);
       const templateId = params.get('template');
+      const isAI = params.get('ai');
       
-      if (!templateId) return;
-
       const isBlank = tiptapEditor.isEmpty || tiptapEditor.getText().trim().length === 0;
+      if (!isBlank) return;
 
-      if (isBlank) {
+      if (templateId) {
         const template = getTemplateById(templateId);
         if (template && template.html) {
           tiptapEditor.commands.setContent(template.html);
         }
-        window.history.replaceState({}, '', `/doc/${roomId}`);
+      } else if (isAI) {
+        const data = sessionStorage.getItem(`pending_ai_content_${roomId}`);
+        if (data) {
+          const { title, html } = JSON.parse(data);
+          updateTitle(title);
+          tiptapEditor.commands.setContent(html);
+          sessionStorage.removeItem(`pending_ai_content_${roomId}`);
+        }
       }
+      
+      window.history.replaceState({}, '', `/doc/${roomId}`);
     }
-  }, [tiptapEditor, roomId]);
+  }, [tiptapEditor, roomId, updateTitle]);
 
   useEffect(() => {
     if (!tiptapEditor) return;

@@ -10,7 +10,7 @@ export default function LoginRequired({ onSignIn, title = "CollabDocs" }) {
     <div className="min-h-screen bg-[var(--surface-0)] flex items-center justify-center p-6 bg-dots relative">
       {/* Back Button */}
       <button 
-        onClick={() => navigate('/')}
+        onClick={() => navigate('/home')}
         className="absolute top-8 left-8 p-3 rounded-2xl bg-[var(--surface-1)] text-[var(--text-secondary)] hover:text-white border border-[var(--glass-border)] hover:border-[var(--brand-500)]/50 transition-all active:scale-95 group flex items-center gap-2 z-50"
       >
         <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />

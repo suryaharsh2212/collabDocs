@@ -2,6 +2,10 @@
  * Home.jsx — Landing Page
  *
  * Features:
+ * - [x] Expand `ICON_MAP` in `Home.jsx` with more Lucide icons
+ * - [x] Refactor Template Modal UI (smaller cards, better grid layout)
+ * - [x] Add AI Prompt input and "Generate" functionality to `Home.jsx`
+ * - [x] Implement content handoff in `DocPage.jsx` for AI-generated documents
  * - App name "CollabDocs" with gradient hero section
  * - "New Document" button — generates nanoid() roomId, navigates to /doc/:roomId
  * - "Join a document" input + button — accepts room URL or bare roomId
@@ -14,18 +18,16 @@ import { nanoid } from 'nanoid';
 import { 
   Sun, Moon, File, Zap, GraduationCap, ClipboardList, 
   FileText, Layout, Users, Download, LogOut, Plus, Search, 
-  Trash2, ChevronRight, Sparkles, Code 
+  Trash2, ChevronRight, Sparkles, Code, Box, Bug, RotateCcw,
+  Briefcase, BookOpen, ListChecks, Wand2
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserRooms } from '../hooks/useRoom';
 import { TEMPLATES } from '../lib/templates';
 
 const ICON_MAP = {
-  File,
-  Zap,
-  GraduationCap,
-  ClipboardList,
-  FileText
+  File, Zap, GraduationCap, ClipboardList, FileText, 
+  Box, Code, Bug, RotateCcw, Briefcase, Users, BookOpen, ListChecks
 };
 
 export default function Home() {
@@ -39,6 +41,9 @@ export default function Home() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [filter, setFilter] = useState('all'); // 'all', 'doc', 'code'
   const [searchQuery, setSearchQuery] = useState('');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   // Custom hook for user documents
   const { rooms: recentRooms, loading: roomsLoading, deleteRoom } = useUserRooms();
@@ -86,10 +91,60 @@ export default function Home() {
 
   const handleCreateFromTemplate = (templateId) => {
     const roomId = nanoid(10);
+    const baseUrl = `/doc/${roomId}`;
     if (user) {
-      navigate(`/doc/${roomId}?template=${templateId}`);
+      navigate(`${baseUrl}?template=${templateId}`);
     } else {
-      navigate(`/?redirect=${roomId}&template=${templateId}`, { replace: true });
+      navigate(`/home?redirect=${roomId}&template=${templateId}`, { replace: true });
+    }
+  };
+
+  const handleGenerateAIBlueprint = async () => {
+    if (!aiPrompt.trim()) return;
+
+    // Rate Limiting Logic
+    const today = new Date().toDateString();
+    const stats = JSON.parse(localStorage.getItem('ai_gen_stats') || '{"date":"","count":0}');
+    
+    if (stats.date === today && stats.count >= 3) {
+      setAiError('Daily limit reached (3 per day). Please try again tomorrow!');
+      return;
+    }
+
+    setIsGenerating(true);
+    setAiError('');
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${apiUrl}/api/ai/generate-blueprint`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt.trim() })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'AI Generation failed');
+
+      // Update Rate Limit Count
+      const newStats = {
+        date: today,
+        count: stats.date === today ? stats.count + 1 : 1
+      };
+      localStorage.setItem('ai_gen_stats', JSON.stringify(newStats));
+
+      const roomId = nanoid(10);
+      // Store the generated HTML for the handoff
+      sessionStorage.setItem(`pending_ai_content_${roomId}`, JSON.stringify({
+        title: data.title,
+        html: data.html
+      }));
+
+      setShowTemplates(false);
+      navigate(`/doc/${roomId}?ai=true`);
+    } catch (err) {
+      console.error('AI Error:', err);
+      setAiError(err.message);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -192,11 +247,11 @@ export default function Home() {
 
           {/* Hero Content */}
           <div className="mb-12">
-            <h1 className="text-4xl xl:text-5xl font-black tracking-tighter text-[var(--text-primary)] mb-4 leading-[1.1]">
+            <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-[var(--text-primary)] mb-4 leading-[1.1]">
               Create. <br />
               <span className="bg-gradient-to-r from-[var(--brand-500)] to-[#7c3aed] bg-clip-text text-transparent">Collaborate.</span>
             </h1>
-            <p className="text-sm xl:text-base text-[var(--text-secondary)] font-medium leading-relaxed max-w-[320px]">
+            <p className="text-sm md:text-base text-[var(--text-secondary)] font-medium leading-relaxed max-w-[320px]">
               The premium real-time workspace for teams who love clean documentation.
             </p>
           </div>
@@ -317,7 +372,7 @@ export default function Home() {
         <div className="flex-1 p-8 lg:p-16 max-w-5xl mx-auto w-full flex flex-col">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
             <div>
-              <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+              <h2 className="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-3">
                 <Layout size={24} className="text-[var(--brand-500)]" />
                 Recent Workspaces
               </h2>
@@ -464,58 +519,101 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Templates Sidebar / Modal Overlay */}
       {showTemplates && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-           <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => setShowTemplates(false)} />
-           <div className="relative glass rounded-[2.5rem] p-8 lg:p-12 w-full max-w-6xl max-h-[90vh] overflow-y-auto animate-fade-in-scale custom-scrollbar border border-[var(--brand-500)]/20">
-              <div className="flex items-center justify-between mb-10">
-                <div>
-                  <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3">
-                    <Sparkles size={32} className="text-[var(--brand-500)]" />
-                    Document Templates
-                  </h2>
-                  <p className="text-[var(--text-muted)] font-medium mt-1">Start with a professionally crafted structure.</p>
+           <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl" onClick={() => setShowTemplates(false)} />
+           <div className="relative bg-[var(--surface-1)] rounded-[2.5rem] w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col animate-fade-in-scale border border-[var(--glass-border)] shadow-[0_0_100px_rgba(99,102,241,0.15)]">
+              {/* Header */}
+              <div className="p-8 lg:p-10 border-b border-[var(--glass-border)] bg-[var(--surface-0)]/50">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3">
+                      <Sparkles size={32} className="text-[var(--brand-500)]" />
+                      Template Library
+                    </h2>
+                    <p className="text-[var(--text-muted)] font-medium mt-1">Start from a pre-defined structure or let AI design one.</p>
+                  </div>
+                  <button onClick={() => setShowTemplates(false)} className="p-3 rounded-2xl bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-white transition-all hover:rotate-90">
+                    <Plus size={24} className="rotate-45" />
+                  </button>
                 </div>
-                <button onClick={() => setShowTemplates(false)} className="p-3 rounded-2xl bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-white transition-all">
-                  <Plus size={24} className="rotate-45" />
-                </button>
+
+                {/* AI Generator Hero */}
+                <div className="relative group">
+                   <div className="absolute -inset-1 bg-gradient-to-r from-[var(--brand-500)] to-fuchsia-600 rounded-[2rem] blur opacity-20 group-focus-within:opacity-40 transition-opacity" />
+                   <div className="relative flex items-center gap-3 bg-[var(--surface-2)] border border-[var(--glass-border)] rounded-[1.5rem] p-2 pr-4 focus-within:border-[var(--brand-500)]/50 transition-all">
+                      <div className="w-12 h-12 rounded-[1rem] bg-[var(--surface-3)] flex items-center justify-center text-[var(--brand-500)] shrink-0 shadow-inner">
+                         <Wand2 size={22} className={isGenerating ? 'animate-spin' : ''} />
+                      </div>
+                      <input 
+                        type="text" 
+                        value={aiPrompt}
+                        maxLength={100}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleGenerateAIBlueprint()}
+                        placeholder="Describe a document (max 100 chars)..."
+                        className="flex-1 bg-transparent border-none outline-none text-white text-sm placeholder-[var(--text-muted)] py-3 px-2"
+                      />
+                      <div className="text-[10px] text-[var(--text-muted)] font-bold px-2 tabular-nums">
+                        {aiPrompt.length}/100
+                      </div>
+                      <button 
+                        onClick={handleGenerateAIBlueprint}
+                        disabled={isGenerating || !aiPrompt.trim()}
+                        className="btn btn-primary !h-11 !px-6 !rounded-xl !text-xs !font-black disabled:opacity-50 disabled:cursor-not-allowed group"
+                      >
+                         {isGenerating ? (
+                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                         ) : (
+                           <>Generate <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" /></>
+                         )}
+                      </button>
+                   </div>
+                   {aiError && <p className="mt-3 text-[10px] text-red-500 font-bold px-4">{aiError}</p>}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {/* Grid Section */}
+              <div className="flex-1 overflow-y-auto p-8 lg:p-10 custom-scrollbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 bg-dots">
                 {/* Blank Option */}
                 <div 
                   onClick={handleNewDoc}
-                  className="group relative h-72 rounded-[2rem] bg-[var(--surface-1)] hover:bg-[var(--surface-2)] border border-[var(--glass-border)] hover:border-[var(--brand-500)]/40 p-8 flex flex-col justify-between transition-all cursor-pointer overflow-hidden"
+                  className="group relative h-48 rounded-3xl bg-[var(--surface-2)]/50 hover:bg-[var(--surface-2)] border border-[var(--glass-border)] hover:border-[var(--brand-500)]/40 p-6 flex flex-col justify-between transition-all cursor-pointer overflow-hidden backdrop-blur-sm"
                 >
-                   <div className="w-14 h-14 rounded-2xl bg-[var(--brand-500)] flex items-center justify-center shadow-lg">
-                      <Plus size={28} strokeWidth={3} className="text-white" />
+                   <div className="w-12 h-12 rounded-xl bg-[var(--brand-500)] flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                      <Plus size={24} strokeWidth={3} className="text-white" />
                    </div>
                    <div>
-                      <h4 className="text-xl font-black text-white mb-2">Blank Slate</h4>
-                      <p className="text-xs text-[var(--text-muted)] font-medium">Free-form collaborative document.</p>
+                      <h4 className="text-lg font-black text-white mb-1">Blank Slate</h4>
+                      <p className="text-[11px] text-[var(--text-muted)] font-medium leading-relaxed">Start fresh with no constraints.</p>
                    </div>
                 </div>
 
                 {/* System Templates */}
-                {TEMPLATES.map((t) => (
-                   <div 
-                     key={t.id}
-                     onClick={() => handleCreateFromTemplate(t.id)}
-                     className="group relative h-72 rounded-[2rem] bg-[var(--surface-1)] hover:bg-[var(--surface-2)] border border-[var(--glass-border)] hover:border-[var(--brand-500)]/40 p-8 flex flex-col justify-between transition-all cursor-pointer overflow-hidden shadow-xl"
-                   >
-                      <div className="w-14 h-14 rounded-2xl bg-[var(--surface-3)] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                         {t.icon}
-                      </div>
-                      <div>
-                         <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[9px] font-black text-[var(--brand-500)] uppercase tracking-widest">{t.category}</span>
-                         </div>
-                         <h4 className="text-xl font-black text-white mb-2">{t.name}</h4>
-                         <p className="text-xs text-[var(--text-muted)] font-medium line-clamp-2">{t.description}</p>
-                      </div>
-                   </div>
-                ))}
+                {TEMPLATES.map((t) => {
+                   const IconComp = ICON_MAP[t.icon] || File;
+                   return (
+                     <div 
+                       key={t.id}
+                       onClick={() => handleCreateFromTemplate(t.id)}
+                       className="group relative h-48 rounded-3xl bg-[var(--surface-2)]/50 hover:bg-[var(--surface-2)] border border-[var(--glass-border)] hover:border-[var(--brand-500)]/40 p-6 flex flex-col justify-between transition-all cursor-pointer overflow-hidden backdrop-blur-sm"
+                     >
+                        <div 
+                          className="w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 shadow-lg"
+                          style={{ backgroundColor: `${t.brandColor}20`, color: t.brandColor }}
+                        >
+                           <IconComp size={24} />
+                        </div>
+                        <div>
+                           <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[9px] font-black uppercase tracking-[0.15em]" style={{ color: t.brandColor }}>{t.id.split('_')[0]}</span>
+                           </div>
+                           <h4 className="text-lg font-black text-white mb-1">{t.title}</h4>
+                           <p className="text-[11px] text-[var(--text-muted)] font-medium line-clamp-2 leading-relaxed">{t.desc}</p>
+                        </div>
+                     </div>
+                   );
+                })}
               </div>
            </div>
         </div>
