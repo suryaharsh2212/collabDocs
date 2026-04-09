@@ -3,6 +3,10 @@ import MonacoEditor, { loader } from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 import PropTypes from 'prop-types';
 import { MonacoBinding } from 'y-monaco';
+import { 
+  Sun, Moon, Type, AlignJustify, ArrowUpToLine, ArrowDownToLine, 
+  Settings2, ChevronDown, Sparkles, Check, Copy
+} from 'lucide-react';
 
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
@@ -21,25 +25,67 @@ self.MonacoEnvironment = {
   }
 };
 
-// Force @monaco-editor/react to use the locally bundled instance
-// This prevents version conflicts and tokenizer bugs!
 loader.config({ monaco });
 
-export default function CodeEditor({ ydoc, provider, language }) {
+export default function CodeEditor({ ydoc, provider, language, onEditorReady }) {
   const [editor, setEditor] = useState(null);
   const bindingRef = useRef(null);
+  
+  // Editor Customization State
+  const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem('ce_fontSize')) || 15);
+  const [lineHeight, setLineHeight] = useState(() => Number(localStorage.getItem('ce_lineHeight')) || 1.6);
+  const [padding, setPadding] = useState(() => Number(localStorage.getItem('ce_padding')) || 16);
+  const [theme, setTheme] = useState(() => localStorage.getItem('ce_theme') || 'collabdocs-dark');
+  const [copied, setCopied] = useState(false);
 
-  const handleEditorDidMount = (editorInstance) => {
+  const handleEditorDidMount = (editorInstance, monaco) => {
+    // Define custom dark theme
+    monaco.editor.defineTheme('collabdocs-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#0b0d17',
+        'editor.lineHighlightBackground': '#1a1d2e',
+        'editorGutter.background': '#0b0d17',
+      }
+    });
+
+    // Define custom light theme
+    monaco.editor.defineTheme('collabdocs-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#f8fafc',
+        'editor.lineHighlightBackground': '#f1f5f9',
+        'editorGutter.background': '#f8fafc',
+      }
+    });
+    
+    monaco.editor.setTheme(theme);
     setEditor(editorInstance);
+    if (onEditorReady) onEditorReady(editorInstance);
   };
+
+  useEffect(() => {
+    if (editor) {
+      monaco.editor.setTheme(theme);
+      localStorage.setItem('ce_theme', theme);
+    }
+  }, [theme, editor]);
+
+  useEffect(() => {
+    localStorage.setItem('ce_fontSize', fontSize);
+    localStorage.setItem('ce_lineHeight', lineHeight);
+    localStorage.setItem('ce_padding', padding);
+  }, [fontSize, lineHeight, padding]);
 
   useEffect(() => {
     if (!editor || !ydoc || !provider) return;
 
-    // We use 'code' as the shared type name for code rooms
     const ytext = ydoc.getText('code');
     
-    // Clean up previous binding if it exists
     if (bindingRef.current) {
       bindingRef.current.destroy();
     }
@@ -60,30 +106,115 @@ export default function CodeEditor({ ydoc, provider, language }) {
     };
   }, [editor, ydoc, provider]);
 
+  const handleCopy = async () => {
+    if (!editor) return;
+    try {
+      await navigator.clipboard.writeText(editor.getValue());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy code:', err);
+    }
+  };
+
   return (
-    <div className="h-full min-h-[500px]">
-      <MonacoEditor
-        key={language}
-        height="100%"
-        language={language}
-        theme="vs-dark"
-        options={{
-          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-          fontSize: 15,
-          lineHeight: 1.6,
-          minimap: { enabled: false },
-          padding: { top: 16, bottom: 16 },
-          scrollBeyondLastLine: false,
-          wordWrap: 'on',
-          cursorBlinking: 'smooth',
-          cursorSmoothCaretAnimation: 'on',
-          smoothScrolling: true,
-          renderLineHighlight: 'gutter',
-          bracketPairColorization: { enabled: true },
-          automaticLayout: true,
-        }}
-        onMount={handleEditorDidMount}
-      />
+    <div className="h-full flex flex-col min-h-[500px]">
+      {/* Compact Control Bar */}
+      <div className="px-4 py-1 border-b border-[var(--surface-3)] bg-[var(--surface-1)]/50 flex items-center justify-between gap-4 select-none h-9">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--surface-2)] border border-[var(--surface-4)]">
+            <Type size={12} className="text-[var(--text-muted)]" />
+            <input 
+              type="number" 
+              value={fontSize} 
+              onChange={(e) => setFontSize(Number(e.target.value))}
+              className="w-8 bg-transparent text-[10px] font-bold text-white outline-none"
+              min="10" max="30"
+            />
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--surface-2)] border border-[var(--surface-4)]">
+            <AlignJustify size={12} className="text-[var(--text-muted)]" />
+            <input 
+              type="number" 
+              step="0.1"
+              value={lineHeight} 
+              onChange={(e) => setLineHeight(Number(e.target.value))}
+              className="w-8 bg-transparent text-[10px] font-bold text-white outline-none"
+              min="1" max="3"
+            />
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[var(--surface-2)] border border-[var(--surface-4)]">
+            <ArrowUpToLine size={12} className="text-[var(--text-muted)]" />
+            <input 
+              type="number" 
+              value={padding} 
+              onChange={(e) => setPadding(Number(e.target.value))}
+              className="w-8 bg-transparent text-[10px] font-bold text-white outline-none"
+              min="0" max="100"
+            />
+          </div>
+          <div className="w-px h-3 bg-[var(--surface-4)] mx-1" />
+          <button
+            onClick={handleCopy}
+            className={`flex items-center gap-2 h-6 px-3 rounded-md border transition-all ${
+              copied 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                : 'bg-[var(--surface-2)] border-[var(--surface-4)] text-[var(--text-muted)] hover:text-white hover:border-indigo-500/50'
+            }`}
+          >
+            {copied ? <Check size={11} /> : <Copy size={11} />}
+            <span className="text-[9px] font-black uppercase tracking-widest">
+              {copied ? 'Copied' : 'Copy'}
+            </span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setTheme(theme === 'collabdocs-dark' ? 'collabdocs-light' : 'collabdocs-dark')}
+            className={`flex items-center gap-2 h-6 px-2.5 rounded-md border transition-all ${
+              theme === 'collabdocs-dark' 
+                ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/20' 
+                : 'bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20'
+            }`}
+          >
+            {theme === 'collabdocs-dark' ? <Moon size={11} /> : <Sun size={11} />}
+            <span className="text-[9px] font-black uppercase tracking-widest">
+              {theme === 'collabdocs-dark' ? 'COSMIC' : 'CLASSIC'}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden relative">
+        <MonacoEditor
+          key={`${language}-${theme}`}
+          height="100%"
+          language={language}
+          theme={theme}
+          options={{
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            fontSize: fontSize,
+            lineHeight: fontSize * lineHeight,
+            minimap: { enabled: false },
+            padding: { top: padding, bottom: padding },
+            scrollBeyondLastLine: false,
+            wordWrap: 'on',
+            cursorBlinking: 'smooth',
+            cursorSmoothCaretAnimation: 'on',
+            smoothScrolling: true,
+            renderLineHighlight: 'gutter',
+            bracketPairColorization: { enabled: true },
+            automaticLayout: true,
+            scrollbar: {
+              vertical: 'visible',
+              useShadows: false,
+              verticalScrollbarSize: 10,
+            }
+          }}
+          onMount={handleEditorDidMount}
+        />
+      </div>
     </div>
   );
 }
@@ -92,4 +223,5 @@ CodeEditor.propTypes = {
   ydoc: PropTypes.object.isRequired,
   provider: PropTypes.object.isRequired,
   language: PropTypes.string,
+  onEditorReady: PropTypes.func
 };

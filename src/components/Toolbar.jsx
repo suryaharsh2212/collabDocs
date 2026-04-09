@@ -14,6 +14,7 @@ import {
   Trash2, Sparkles, IndentDecrease, IndentIncrease, BetweenVerticalStart
 } from 'lucide-react';
 import { ToolbarButton, ToolbarDropdown, ToolbarColorPicker } from './EditorUiComponents';
+import UserPresence from './UserPresence';
 
 export default function Toolbar({
   isCodePage = false,
@@ -33,7 +34,9 @@ export default function Toolbar({
   onToggleAi,
   title,
   onTitleChange,
-  onTitleBlur
+  onTitleBlur,
+  isConnected,
+  connectedUsers
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -95,6 +98,14 @@ export default function Toolbar({
     { label: 'Para: 24px', value: '24px', type: 'para' },
   ];
 
+  const languageOptions = [
+    { label: 'JavaScript', value: 'javascript' },
+    { label: 'TypeScript', value: 'typescript' },
+    { label: 'Python', value: 'python' },
+    { label: 'Java', value: 'java' },
+    { label: 'C++', value: 'cpp' },
+  ];
+
   /** Determine current values for dropdowns */
   const currentFont = tiptapEditor?.getAttributes('textStyle').fontFamily || '"Inter", sans-serif';
   const currentSize = tiptapEditor?.getAttributes('textStyle').fontSize || '12pt';
@@ -121,18 +132,6 @@ export default function Toolbar({
             
             <div className="w-px h-6 bg-[var(--surface-4)] mx-1" />
 
-            {/* Document Title Input */}
-            <div className="flex items-center flex-1 max-w-sm">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => onTitleChange(e.target.value)}
-                onBlur={onTitleBlur}
-                className="bg-transparent border-none outline-none text-xs font-bold text-[var(--text-secondary)] focus:text-[var(--text-primary)] w-full placeholder-[var(--text-muted)] transition-colors px-1"
-                placeholder="Untitled Document"
-              />
-            </div>
-            
             <div className="flex items-center bg-[var(--surface-2)] rounded-lg p-0.5 border border-[var(--surface-4)]">
               {isCodePage ? (
                 <span className="flex items-center gap-2 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider text-indigo-300 shadow-sm cursor-default">
@@ -146,6 +145,16 @@ export default function Toolbar({
                 </span>
               )}
             </div>
+            <div className="flex items-center flex-1 max-w-sm">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => onTitleChange(e.target.value)}
+                onBlur={onTitleBlur}
+                className="bg-transparent border-none outline-none text-xs font-bold text-[var(--text-secondary)] focus:text-[var(--text-primary)] w-full placeholder-[var(--text-muted)] transition-colors px-1"
+                placeholder="Write your File Name" 
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -153,18 +162,20 @@ export default function Toolbar({
               onClick={handleShare}
               className={`btn h-8 px-4 text-[10px] font-black uppercase tracking-widest ${copied ? 'btn-primary' : 'btn-secondary'} transition-all`}
             >
-              {copied ? 'Copied' : 'Share'}
+              {copied ? 'Copied' : 'Invite'}
             </button>
             <button onClick={onExport} className="btn h-8 px-4 text-[10px] font-black uppercase tracking-widest btn-secondary">
               Export
             </button>
-            <button 
-              onClick={onToggleAi}
-              className="btn btn-primary h-8 px-4 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-lg shadow-indigo-500/20"
-            >
-              <Sparkles size={12} />
-              AI Help
-            </button>
+            {!isCodePage && (
+              <button 
+                onClick={onToggleAi}
+                className="btn btn-primary h-8 px-4 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-lg shadow-indigo-500/20"
+              >
+                <Sparkles size={12} />
+                AI Help
+              </button>
+            )}
             <div className="w-px h-6 bg-[var(--surface-4)] mx-1" />
             {user ? (
               <button onClick={onSignOut} className="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center ring-2 ring-[var(--surface-4)] hover:ring-indigo-500 transition-all">
@@ -439,28 +450,61 @@ export default function Toolbar({
           )}
 
           {isCodePage && (
-            <div className="flex items-center gap-3 py-1">
-              <div className="flex items-center bg-[var(--surface-3)] rounded-md px-2 py-1">
-                  <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mr-2">Language</span>
-                  <select
-                    value={codeLanguage}
-                    onChange={(e) => onLanguageChange(e.target.value)}
-                    className="bg-transparent text-[var(--text-primary)] text-[10px] font-bold outline-none cursor-pointer"
-                  >
-                    <option value="javascript">JavaScript</option>
-                    <option value="typescript">TypeScript</option>
-                    <option value="python">Python</option>
-                    <option value="html">HTML</option>
-                  </select>
+            <div className="flex items-center justify-between w-full py-1">
+              <div className="flex items-center gap-3">
+                <ToolbarDropdown
+                  options={languageOptions}
+                  value={codeLanguage}
+                  onChange={(val) => onLanguageChange(val)}
+                  label="Language"
+                  className="bg-[var(--surface-3)] border-none"
+                  tooltip="Change Programming Language"
+                />
+                <button
+                  onClick={onRun}
+                  disabled={codeLanguage !== 'javascript'}
+                  className="btn h-7 px-3 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black uppercase tracking-widest border-none shadow-md"
+                >
+                  <Play size={12} fill="currentColor" />
+                  Run
+                </button>
+                <button
+                  onClick={onToggleAi}
+                  className="btn btn-primary h-7 px-3 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-md"
+                >
+                  <Sparkles size={12} />
+                  AI Help
+                </button>
+                
+                <div className="w-px h-4 bg-[var(--surface-4)] mx-2" />
+                
+                {/* Compact Status Info */}
+                <div className="flex items-center gap-2 text-[10px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-400'} ${isConnected ? 'animate-pulse' : ''}`} />
+                    <span className="text-[var(--text-muted)] font-bold uppercase tracking-wider">
+                      {isConnected ? 'LIVE' : 'OFFLINE'}
+                    </span>
+                  </div>
+                  <span className="text-[var(--text-muted)] opacity-30">|</span>
+                  <span className="text-[var(--text-muted)] font-mono opacity-80">{roomId}</span>
+                </div>
               </div>
-              <button
-                onClick={onRun}
-                disabled={codeLanguage !== 'javascript'}
-                className="btn h-7 px-3 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black uppercase tracking-widest border-none shadow-md"
-              >
-                <Play size={12} fill="currentColor" />
-                Run
-              </button>
+
+              <div className="flex items-center gap-3">
+                <UserPresence connectedUsers={connectedUsers} />
+                <div className="w-px h-4 bg-[var(--surface-4)]" />
+                <ToolbarButton 
+                  icon={<MessageSquare size={16} />} 
+                  onClick={onToggleChat} 
+                  tooltip="Chat"
+                />
+                <ToolbarButton 
+                  icon={isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />} 
+                  onClick={onToggleFullscreen} 
+                  tooltip={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                />
+              </div>
             </div>
           )}
         </div>

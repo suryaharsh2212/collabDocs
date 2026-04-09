@@ -41,6 +41,7 @@
     "jspdf": "^4.2.1",
     "lowlight": "^2.9.0",
     "lucide-react": "^1.8.0",
+    "marked": "^18.0.0",
     "monaco-editor": "^0.55.1",
     "nanoid": "^5.1.7",
     "prop-types": "^15.8.1",

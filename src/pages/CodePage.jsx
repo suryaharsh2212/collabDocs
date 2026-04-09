@@ -10,6 +10,8 @@ import ChatSidebar from '../components/ChatSidebar';
 import ExecutionConsole from '../components/ExecutionConsole';
 import ExportPanel from '../components/ExportPanel';
 import LoginRequired from '../components/LoginRequired';
+import AiAssistant from '../components/AiAssistant';
+import { Sparkles } from 'lucide-react';
 
 export default function CodePage() {
   const { roomId } = useParams();
@@ -27,6 +29,10 @@ export default function CodePage() {
   // Execution console state
   const [logs, setLogs] = useState([]);
   const [showConsole, setShowConsole] = useState(false);
+
+  // AI Assistant state
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
+  const [monacoEditor, setMonacoEditor] = useState(null);
 
   useEffect(() => {
     if (room && room.type !== 'code') {
@@ -176,65 +182,26 @@ export default function CodePage() {
         codeLanguage={codeLanguage}
         onLanguageChange={setCodeLanguage}
         onRun={handleRun}
+        onToggleAi={() => setIsAiAssistantOpen(true)}
         onExport={() => setShowExport(true)}
         onToggleChat={() => setShowChat(!showChat)}
         user={user}
         onSignIn={signInWithGoogle}
         onSignOut={signOutUser}
         roomId={roomId}
+        isConnected={isConnected}
+        connectedUsers={connectedUsers}
       />
 
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 relative flex flex-col min-w-0">
-          <div className="px-4 py-1.5 flex items-center justify-between text-xs border-b border-[var(--surface-3)]">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-400'} ${isConnected ? 'animate-pulse' : ''}`} />
-                <span className="text-[var(--text-muted)]">
-                  {isConnected ? 'Connected' : 'Connecting...'}
-                </span>
-              </div>
-              <span className="text-[var(--text-muted)]">•</span>
-              <span className="text-[var(--text-muted)]">
-                Session: <span className="text-[var(--text-secondary)] font-mono">{roomId}</span>
-              </span>
-            </div>
-
-            <div className="flex items-center gap-4">
-              {showChatNotif && lastChatMessage && (
-                <div 
-                  className="chat-notification-pill group"
-                  onClick={() => {
-                    setShowChat(true);
-                    setShowChatNotif(false);
-                  }}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                  <span className="opacity-80">New message from</span>
-                  <span className="font-black text-white">{lastChatMessage.author}</span>
-                </div>
-              )}
-              <UserPresence connectedUsers={connectedUsers} />
-            </div>
-          </div>
-
-          <div className="flex-1 flex flex-col bg-[var(--surface-0)] pt-2 relative">
-             <div className="px-6 mb-2">
-                <input
-                  type="text"
-                  value={localTitle}
-                  onChange={(e) => setLocalTitle(e.target.value)}
-                  onBlur={handleTitleBlur}
-                  onKeyDown={handleTitleKeyDown}
-                  className="text-2xl font-black bg-transparent border-none outline-none text-white w-full placeholder-[var(--text-muted)] focus:ring-0 text-left"
-                  placeholder="Untitled Code Snippet"
-                />
-             </div>
+          <div className="flex-1 flex flex-col bg-[var(--surface-0)] relative">
             {ydoc && provider ? (
               <CodeEditor
                 ydoc={ydoc}
                 provider={provider}
                 language={codeLanguage}
+                onEditorReady={setMonacoEditor}
               />
             ) : (
               <div className="flex-1 flex items-center justify-center">
@@ -269,6 +236,14 @@ export default function CodePage() {
         isOpen={showConsole} 
         onClose={() => setShowConsole(false)} 
         onClear={() => setLogs([])}
+      />
+
+      <AiAssistant
+        isOpen={isAiAssistantOpen}
+        onClose={() => setIsAiAssistantOpen(false)}
+        editor={monacoEditor}
+        mode="code"
+        variant="sidebar"
       />
     </div>
   );
