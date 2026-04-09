@@ -1,17 +1,19 @@
-/**
- * Toolbar.jsx — Editor Toolbar
- *
- * Features:
- * - Mode toggle: "Rich Text" vs "Code" pill buttons
- * - Rich text formatting: Bold, Italic, Underline, H1, H2, Bullet List, Code Block
- *   (all wired to TipTap editor commands via the editor instance prop)
- * - Share button: copies current URL to clipboard with "Copied!" toast
- * - Export button: opens the ExportPanel
- * - Auth button: Sign in / Sign out (Firebase Google auth)
- */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { FileText, Code, Share2, Download, MessageSquare, LogOut, Play } from 'lucide-react';
+import { 
+  FileText, Code, Share2, Download, MessageSquare, LogOut, Play,
+  Bold, Italic, Underline as UnderlineIcon, Strikethrough, 
+  AlignLeft, AlignCenter, AlignRight, AlignJustify,
+  Type, List, ListOrdered, CheckSquare, 
+  Table as TableIcon, Image as ImageIcon, Link as LinkIcon, 
+   Quote, Code2, 
+  Undo2, Redo2, Maximize2, Minimize2,
+  Highlighter, Palette, ChevronDown, Plus, MoreHorizontal,
+  Baseline, ArrowUpToLine, ArrowDownToLine,
+  Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
+  Trash2, Sparkles, IndentDecrease, IndentIncrease, BetweenVerticalStart
+} from 'lucide-react';
+import { ToolbarButton, ToolbarDropdown, ToolbarColorPicker } from './EditorUiComponents';
 
 export default function Toolbar({
   isCodePage = false,
@@ -26,6 +28,12 @@ export default function Toolbar({
   onSignIn,
   onSignOut,
   roomId,
+  isFullscreen = false,
+  onToggleFullscreen,
+  onToggleAi,
+  title,
+  onTitleChange,
+  onTitleBlur
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -40,386 +48,420 @@ export default function Toolbar({
     }
   }, []);
 
-  /** Check if a TipTap formatting option is currently active */
-  const isActive = (name, attrs) => {
-    if (!tiptapEditor) return false;
-    return tiptapEditor.isActive(name, attrs);
-  };
+  /** Dropdown Options */
+  const fontOptions = [
+    { label: 'Inter', value: '"Inter", sans-serif' },
+    { label: 'Serif', value: 'serif', style: { fontFamily: 'serif' } },
+    { label: 'Monospace', value: 'monospace', style: { fontFamily: 'monospace' } },
+    { label: 'Roboto', value: '"Roboto", sans-serif', style: { fontFamily: '"Roboto", sans-serif' } },
+    { label: 'Outfit', value: '"Outfit", sans-serif', style: { fontFamily: '"Outfit", sans-serif' } },
+  ];
 
-  /** Format button helper */
-  const FormatButton = ({ icon, command, active, tooltip, disabled }) => (
-    <button
-      onClick={command}
-      disabled={disabled}
-      className={`
-        btn btn-icon text-sm transition-all
-        ${active
-          ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-          : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)]'
-        }
-        ${disabled ? 'opacity-30 cursor-not-allowed' : ''}
-      `}
-      title={tooltip}
-    >
-      {icon}
-    </button>
-  );
+  const sizeOptions = [
+    { label: '8pt', value: '8pt' },
+    { label: '10pt', value: '10pt' },
+    { label: '12pt', value: '12pt' },
+    { label: '14pt', value: '14pt' },
+    { label: '16pt', value: '16pt' },
+    { label: '18pt', value: '18pt' },
+    { label: '20pt', value: '20pt' },
+    { label: '24pt', value: '24pt' },
+    { label: '30pt', value: '30pt' },
+    { label: '36pt', value: '36pt' },
+  ];
+
+  const headingOptions = [
+    { label: 'Normal Text', value: '0' },
+    { label: 'Heading 1', value: '1', style: { fontSize: '1.5rem', fontWeight: '800' } },
+    { label: 'Heading 2', value: '2', style: { fontSize: '1.25rem', fontWeight: '700' } },
+    { label: 'Heading 3', value: '3', style: { fontSize: '1.1rem', fontWeight: '600' } },
+    { label: 'Heading 4', value: '4', style: { fontSize: '1rem', fontWeight: '600' } },
+  ];
+
+  const colorPalette = [
+    '#ffffff', '#f8fafc', '#94a3b8', '#64748b', '#0f172a',
+    '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9',
+    '#6366f1', '#8b5cf6', '#d946ef', '#ec4899', '#f43f5e'
+  ];
+
+  const spacingOptions = [
+    { label: 'Line: Single', value: '1', type: 'line' },
+    { label: 'Line: 1.15', value: '1.15', type: 'line' },
+    { label: 'Line: 1.5', value: '1.5', type: 'line' },
+    { label: 'Line: Double', value: '2', type: 'line' },
+    { label: 'Para: 0px', value: '0px', type: 'para' },
+    { label: 'Para: 8px', value: '8px', type: 'para' },
+    { label: 'Para: 16px', value: '16px', type: 'para' },
+    { label: 'Para: 24px', value: '24px', type: 'para' },
+  ];
+
+  /** Determine current values for dropdowns */
+  const currentFont = tiptapEditor?.getAttributes('textStyle').fontFamily || '"Inter", sans-serif';
+  const currentSize = tiptapEditor?.getAttributes('textStyle').fontSize || '12pt';
+  const currentHeading = tiptapEditor?.isActive('heading') 
+    ? tiptapEditor.getAttributes('heading').level.toString() 
+    : '0';
+  const currentColor = tiptapEditor?.getAttributes('textStyle').color || '#f8fafc';
+  const currentHighlight = tiptapEditor?.getAttributes('highlight').color || null;
 
   return (
-    <div className="sticky top-0 z-40 glass border-b border-[var(--glass-border)]">
-      <div className="flex items-center justify-between px-4 py-2 gap-3">
-        {/* Left section: Logo + Title */}
-        <div className="flex items-center gap-4">
-          {/* Back to home */}
-          <a
-            href="/home"
-            className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-white transition-colors"
-          >
-            <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center shadow-md">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-                <path d="M6 8h2"/><path d="M6 12h2"/><path d="M16 8h2"/><path d="M16 12h2"/>
-              </svg>
+    <div className="sticky top-0 z-40 glass border-b border-[var(--glass-border)] transition-all">
+      <div className="flex flex-col">
+        {/* Top Section: App Identity & Main Actions */}
+        <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--glass-border)] gap-4">
+          <div className="flex items-center gap-3">
+            <a href="/home" className="flex items-center gap-2 group">
+              <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center shadow-md group-hover:shadow-indigo-500/30 transition-all">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                </svg>
+              </div>
+              <span className="font-black text-sm tracking-tight hidden md:block">CollabDocs</span>
+            </a>
+            
+            <div className="w-px h-6 bg-[var(--surface-4)] mx-1" />
+
+            {/* Document Title Input */}
+            <div className="flex items-center flex-1 max-w-sm">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => onTitleChange(e.target.value)}
+                onBlur={onTitleBlur}
+                className="bg-transparent border-none outline-none text-xs font-bold text-[var(--text-secondary)] focus:text-[var(--text-primary)] w-full placeholder-[var(--text-muted)] transition-colors px-1"
+                placeholder="Untitled Document"
+              />
             </div>
-          </a>
-
-          {/* Separator */}
-          <div className="w-px h-6 bg-[var(--surface-4)]" />
-
-          {/* Page Type Badge */}
-          <div className="flex items-center bg-[var(--surface-2)] rounded-lg p-0.5 border border-[var(--surface-4)]">
-            {isCodePage ? (
-              <span className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-500/20 text-indigo-300 shadow-sm cursor-default">
-                <Code size={14} strokeWidth={2.5} />
-                Code Environment
-              </span>
-            ) : (
-              <span className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold bg-indigo-500/20 text-indigo-300 shadow-sm cursor-default">
-                <FileText size={14} strokeWidth={2.5} />
-                Document Workspace
-              </span>
-            )}
+            
+            <div className="flex items-center bg-[var(--surface-2)] rounded-lg p-0.5 border border-[var(--surface-4)]">
+              {isCodePage ? (
+                <span className="flex items-center gap-2 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider text-indigo-300 shadow-sm cursor-default">
+                  <Code size={12} strokeWidth={3} />
+                  Code
+                </span>
+              ) : (
+                <span className="flex items-center gap-2 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider text-indigo-300 shadow-sm cursor-default">
+                  <FileText size={12} strokeWidth={3} />
+                  Docs
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* Separator */}
-          <div className="w-px h-6 bg-[var(--surface-4)] hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleShare}
+              className={`btn h-8 px-4 text-[10px] font-black uppercase tracking-widest ${copied ? 'btn-primary' : 'btn-secondary'} transition-all`}
+            >
+              {copied ? 'Copied' : 'Share'}
+            </button>
+            <button onClick={onExport} className="btn h-8 px-4 text-[10px] font-black uppercase tracking-widest btn-secondary">
+              Export
+            </button>
+            <button 
+              onClick={onToggleAi}
+              className="btn btn-primary h-8 px-4 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-lg shadow-indigo-500/20"
+            >
+              <Sparkles size={12} />
+              AI Help
+            </button>
+            <div className="w-px h-6 bg-[var(--surface-4)] mx-1" />
+            {user ? (
+              <button onClick={onSignOut} className="w-8 h-8 rounded-full bg-gradient-brand flex items-center justify-center ring-2 ring-[var(--surface-4)] hover:ring-indigo-500 transition-all">
+                <span className="text-[10px] font-black text-white">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>
+              </button>
+            ) : (
+              <button onClick={onSignIn} className="btn h-8 px-4 text-[10px] font-black uppercase tracking-widest btn-primary">Sign In</button>
+            )}
+          </div>
+        </div>
 
-          {/* Code Tools — only visible in code mode */}
-          {isCodePage && (
-            <div className="flex items-center gap-3 animate-fade-in pl-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest hidden sm:block">Language</span>
-                <select
-                  value={codeLanguage}
-                  onChange={(e) => onLanguageChange(e.target.value)}
-                  className="bg-[var(--surface-2)] text-[var(--text-primary)] text-xs font-bold px-3 py-1.5 rounded-md border border-[var(--surface-4)] focus:outline-none focus:border-[var(--brand-500)] transition-all cursor-pointer hover:bg-[var(--surface-3)]"
-                >
-                  <option value="javascript">JavaScript</option>
-                  <option value="typescript">TypeScript</option>
-                  <option value="python">Python</option>
-                  <option value="html">HTML</option>
-                  <option value="css">CSS</option>
-                  <option value="cpp">C++</option>
-                  <option value="java">Java</option>
-                  <option value="json">JSON</option>
-                  <option value="markdown">Markdown</option>
-                  <option value="sql">SQL</option>
-                  <option value="yaml">YAML</option>
-                </select>
+        {/* Bottom Section: Editor Tools */}
+        <div className="flex items-center px-4 py-1.5 gap-1 overflow-visible no-scrollbar bg-[var(--surface-0)]/50">
+          {!isCodePage && tiptapEditor && (
+            <>
+              {/* History Group */}
+              <div className="flex items-center">
+                <ToolbarButton 
+                  icon={<Undo2 size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().undo().run()} 
+                  tooltip="Undo (Ctrl+Z)"
+                />
+                <ToolbarButton 
+                  icon={<Redo2 size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().redo().run()} 
+                  tooltip="Redo (Ctrl+Y)"
+                />
               </div>
 
-              <div className="w-px h-5 bg-[var(--surface-4)] mx-1" />
+              <div className="w-px h-4 bg-[var(--surface-3)] mx-1" />
 
+              {/* Text Style Group */}
+              <div className="flex items-center gap-1">
+                <ToolbarDropdown 
+                  options={headingOptions} 
+                  value={currentHeading}
+                  onChange={(val) => {
+                    if (val === '0') tiptapEditor.chain().focus().setParagraph().run();
+                    else tiptapEditor.chain().focus().toggleHeading({ level: parseInt(val) }).run();
+                  }}
+                  tooltip="Style"
+                />
+                <ToolbarDropdown 
+                  options={fontOptions} 
+                  value={currentFont}
+                  onChange={(val) => tiptapEditor.chain().focus().setFontFamily(val).run()}
+                  tooltip="Font"
+                />
+                <ToolbarDropdown 
+                  options={sizeOptions} 
+                  value={currentSize}
+                  onChange={(val) => tiptapEditor.chain().focus().setFontSize(val).run()}
+                  tooltip="Size"
+                />
+              </div>
+
+              <div className="w-px h-4 bg-[var(--surface-3)] mx-1" />
+
+              {/* Basic Formatting Group */}
+              <div className="flex items-center">
+                <ToolbarButton 
+                  icon={<Bold size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().toggleBold().run()} 
+                  active={tiptapEditor.isActive('bold')}
+                  tooltip="Bold"
+                />
+                <ToolbarButton 
+                  icon={<Italic size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().toggleItalic().run()} 
+                  active={tiptapEditor.isActive('italic')}
+                  tooltip="Italic"
+                />
+                <ToolbarButton 
+                  icon={<UnderlineIcon size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().toggleUnderline().run()} 
+                  active={tiptapEditor.isActive('underline')}
+                  tooltip="Underline"
+                />
+                <ToolbarButton 
+                  icon={<Strikethrough size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().toggleStrike().run()} 
+                  active={tiptapEditor.isActive('strike')}
+                  tooltip="Strike"
+                />
+                <ToolbarColorPicker 
+                  icon={<Baseline size={16} />} 
+                  value={currentColor}
+                  onChange={(val) => val ? tiptapEditor.chain().focus().setColor(val).run() : tiptapEditor.chain().focus().unsetColor().run()}
+                  colors={colorPalette}
+                  tooltip="Text Color"
+                />
+                <ToolbarColorPicker 
+                  icon={<Highlighter size={16} />} 
+                  value={currentHighlight}
+                  onChange={(val) => val ? tiptapEditor.chain().focus().toggleHighlight({ color: val }).run() : tiptapEditor.chain().focus().unsetHighlight().run()}
+                  colors={colorPalette}
+                  tooltip="Highlight"
+                />
+              </div>
+
+              <div className="w-px h-4 bg-[var(--surface-3)] mx-1" />
+
+              {/* Paragraph Group */}
+              <div className="flex items-center">
+                <ToolbarButton 
+                  icon={<AlignLeft size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().setTextAlign('left').run()} 
+                  active={tiptapEditor.isActive({ textAlign: 'left' })}
+                  tooltip="Align Left"
+                />
+                <ToolbarButton 
+                  icon={<AlignCenter size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().setTextAlign('center').run()} 
+                  active={tiptapEditor.isActive({ textAlign: 'center' })}
+                  tooltip="Align Center"
+                />
+                <ToolbarButton 
+                  icon={<AlignRight size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().setTextAlign('right').run()} 
+                  active={tiptapEditor.isActive({ textAlign: 'right' })}
+                  tooltip="Align Right"
+                />
+                <ToolbarButton 
+                  icon={<AlignJustify size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().setTextAlign('justify').run()} 
+                  active={tiptapEditor.isActive({ textAlign: 'justify' })}
+                  tooltip="Justify"
+                />
+                <div className="w-px h-4 bg-[var(--surface-3)] mx-1" />
+                <ToolbarButton 
+                  icon={<IndentDecrease size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().outdent().run()} 
+                  tooltip="Decrease Indent"
+                />
+                <ToolbarButton 
+                  icon={<IndentIncrease size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().indent().run()} 
+                  tooltip="Increase Indent"
+                />
+                <div className="w-px h-4 bg-[var(--surface-3)] mx-1" />
+                <ToolbarDropdown 
+                  icon={<BetweenVerticalStart size={16} />}
+                  options={spacingOptions}
+                  onChange={(val, opt) => {
+                    if (opt.type === 'line') tiptapEditor.chain().focus().setLineHeight(val).run();
+                    else tiptapEditor.chain().focus().setParagraphSpacing(val).run();
+                  }}
+                  tooltip="Line & Paragraph Spacing"
+                />
+                <div className="w-px h-4 bg-[var(--surface-3)] mx-1" />
+                <ToolbarButton 
+                  icon={<SubscriptIcon size={14} />} 
+                  onClick={() => tiptapEditor.chain().focus().toggleSubscript().run()} 
+                  active={tiptapEditor.isActive('subscript')}
+                  tooltip="Subscript"
+                />
+                <ToolbarButton 
+                  icon={<SuperscriptIcon size={14} />} 
+                  onClick={() => tiptapEditor.chain().focus().toggleSuperscript().run()} 
+                  active={tiptapEditor.isActive('superscript')}
+                  tooltip="Superscript"
+                />
+              </div>
+
+              <div className="w-px h-4 bg-[var(--surface-3)] mx-1" />
+
+              {/* Lists & Indent Group */}
+              <div className="flex items-center">
+                <ToolbarButton 
+                  icon={<List size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().toggleBulletList().run()} 
+                  active={tiptapEditor.isActive('bulletList')}
+                  tooltip="Bullet List"
+                />
+                <ToolbarButton 
+                  icon={<ListOrdered size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().toggleOrderedList().run()} 
+                  active={tiptapEditor.isActive('orderedList')}
+                  tooltip="Ordered List"
+                />
+                <ToolbarButton 
+                  icon={<CheckSquare size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().toggleTaskList().run()} 
+                  active={tiptapEditor.isActive('taskList')}
+                  tooltip="Task List"
+                />
+              </div>
+
+              <div className="w-px h-4 bg-[var(--surface-3)] mx-1" />
+
+              {/* Insert Group */}
+              <div className="flex items-center">
+                <ToolbarButton 
+                  icon={<TableIcon size={16} />} 
+                  onClick={() => {
+                    const rows = window.prompt('Enter number of rows:', '3');
+                    const cols = window.prompt('Enter number of columns:', '3');
+                    if (rows && cols) {
+                      tiptapEditor.chain().focus().insertTable({ rows: parseInt(rows), cols: parseInt(cols), withHeaderRow: true }).run();
+                    }
+                  }} 
+                  active={tiptapEditor.isActive('table')}
+                  tooltip="Insert Table"
+                />
+                <ToolbarButton 
+                  icon={<ImageIcon size={16} />} 
+                  onClick={() => {
+                    const url = window.prompt('Enter image URL:');
+                    if (url) tiptapEditor.chain().focus().setImage({ src: url }).run();
+                  }} 
+                  tooltip="Insert Image"
+                />
+                <ToolbarButton 
+                  icon={<LinkIcon size={16} />} 
+                  onClick={() => {
+                    const previousUrl = tiptapEditor.getAttributes('link').href;
+                    const url = window.prompt('Enter URL:', previousUrl);
+                    if (url === null) return;
+                    if (url === '') {
+                        tiptapEditor.chain().focus().extendMarkRange('link').unsetLink().run();
+                        return;
+                    }
+                    tiptapEditor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+                  }} 
+                  active={tiptapEditor.isActive('link')}
+                  tooltip="Link"
+                />
+                {/* <ToolbarButton 
+                  icon={<Youtube size={16} />} 
+                  onClick={() => {
+                    const url = window.prompt('Enter YouTube URL:');
+                    if (url) tiptapEditor.commands.setYoutubeVideo({ src: url });
+                  }} 
+                  tooltip="Embed Video"
+                /> */}
+                <ToolbarButton 
+                  icon={<Code2 size={16} />} 
+                  onClick={() => tiptapEditor.chain().focus().toggleCodeBlock().run()} 
+                  active={tiptapEditor.isActive('codeBlock')}
+                  tooltip="Code Block"
+                />
+                <div className="w-px h-4 bg-[var(--surface-3)] mx-1" />
+                <ToolbarButton 
+                  icon={<Trash2 size={16} className="text-red-400" />} 
+                  onClick={() => {
+                    // Smart delete: Try to delete selection, then try to delete the focused node
+                    tiptapEditor.chain().focus().deleteSelection().run();
+                    // If selection was just a cursor, we might want to delete a node if it's selected
+                    if (tiptapEditor.isActive('table')) tiptapEditor.chain().focus().deleteTable().run();
+                    if (tiptapEditor.isActive('image')) tiptapEditor.chain().focus().deleteSelection().run(); // Images are usually handled by deleteSelection
+                  }} 
+                  tooltip="Delete Selection/Element"
+                />
+              </div>
+
+              <div className="flex-1" />
+
+              {/* App UI Actions */}
+              <div className="flex items-center gap-1">
+                <ToolbarButton 
+                  icon={<MessageSquare size={16} />} 
+                  onClick={onToggleChat} 
+                  tooltip="Chat"
+                />
+                <ToolbarButton 
+                  icon={isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />} 
+                  onClick={onToggleFullscreen} 
+                  tooltip={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                />
+              </div>
+            </>
+          )}
+
+          {isCodePage && (
+            <div className="flex items-center gap-3 py-1">
+              <div className="flex items-center bg-[var(--surface-3)] rounded-md px-2 py-1">
+                  <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mr-2">Language</span>
+                  <select
+                    value={codeLanguage}
+                    onChange={(e) => onLanguageChange(e.target.value)}
+                    className="bg-transparent text-[var(--text-primary)] text-[10px] font-bold outline-none cursor-pointer"
+                  >
+                    <option value="javascript">JavaScript</option>
+                    <option value="typescript">TypeScript</option>
+                    <option value="python">Python</option>
+                    <option value="html">HTML</option>
+                  </select>
+              </div>
               <button
                 onClick={onRun}
                 disabled={codeLanguage !== 'javascript'}
-                className="btn btn-primary text-xs bg-emerald-600 hover:bg-emerald-500 border-none shadow-emerald-600/20 shadow-md"
-                title={codeLanguage !== 'javascript' ? 'Only JavaScript execution is currently supported' : 'Run JavaScript'}
-                id="run-code-btn"
+                className="btn h-7 px-3 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black uppercase tracking-widest border-none shadow-md"
               >
-                <Play size={14} fill="currentColor" />
+                <Play size={12} fill="currentColor" />
                 Run
               </button>
             </div>
-          )}
-
-          {/* Rich Text Formatting Buttons — only visible in richtext mode */}
-          {!isCodePage && tiptapEditor && (
-            <div className="flex items-center gap-1 animate-fade-in">
-              <FormatButton
-                icon={<span className="font-bold">B</span>}
-                command={() => tiptapEditor.chain().focus().toggleBold().run()}
-                active={isActive('bold')}
-                tooltip="Bold (Ctrl+B)"
-              />
-              <FormatButton
-                icon={<span className="italic">I</span>}
-                command={() => tiptapEditor.chain().focus().toggleItalic().run()}
-                active={isActive('italic')}
-                tooltip="Italic (Ctrl+I)"
-              />
-              <FormatButton
-                icon={<span className="underline">U</span>}
-                command={() => tiptapEditor.chain().focus().toggleUnderline().run()}
-                active={isActive('underline')}
-                tooltip="Underline (Ctrl+U)"
-              />
-
-              <div className="w-px h-5 bg-[var(--surface-4)] mx-1" />
-
-              <FormatButton
-                icon={<span className="text-xs font-bold">H1</span>}
-                command={() => tiptapEditor.chain().focus().toggleHeading({ level: 1 }).run()}
-                active={isActive('heading', { level: 1 })}
-                tooltip="Heading 1"
-              />
-              <FormatButton
-                icon={<span className="text-xs font-bold">H2</span>}
-                command={() => tiptapEditor.chain().focus().toggleHeading({ level: 2 }).run()}
-                active={isActive('heading', { level: 2 })}
-                tooltip="Heading 2"
-              />
-
-              <div className="w-px h-5 bg-[var(--surface-4)] mx-1" />
-
-              <FormatButton
-                icon={
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="8" y1="6" x2="21" y2="6" />
-                    <line x1="8" y1="12" x2="21" y2="12" />
-                    <line x1="8" y1="18" x2="21" y2="18" />
-                    <line x1="3" y1="6" x2="3.01" y2="6" />
-                    <line x1="3" y1="12" x2="3.01" y2="12" />
-                    <line x1="3" y1="18" x2="3.01" y2="18" />
-                  </svg>
-                }
-                command={() => tiptapEditor.chain().focus().toggleBulletList().run()}
-                active={isActive('bulletList')}
-                tooltip="Bullet List"
-              />
-              <FormatButton
-                icon={
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="9 11 12 14 20 6" />
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                  </svg>
-                }
-                command={() => tiptapEditor.chain().focus().toggleTaskList().run()}
-                active={isActive('taskList')}
-                tooltip="Task List"
-              />
-
-              <div className="w-px h-5 bg-[var(--surface-4)] mx-1" />
-
-              <FormatButton
-                icon={<span className="font-bold bg-yellow-500/80 text-yellow-100 rounded px-1 text-[10px]">Hl</span>}
-                command={() => tiptapEditor.chain().focus().toggleHighlight().run()}
-                active={isActive('highlight')}
-                tooltip="Highlight"
-              />
-
-              <div className="w-px h-5 bg-[var(--surface-4)] mx-1" />
-
-              <FormatButton
-                icon={
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <line x1="3" y1="9" x2="21" y2="9" />
-                    <line x1="9" y1="21" x2="9" y2="9" />
-                  </svg>
-                }
-                command={() => tiptapEditor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
-                active={isActive('table')}
-                tooltip="Insert Table"
-              />
-
-              <div className="w-px h-5 bg-[var(--surface-4)] mx-1" />
-
-              <FormatButton
-                icon={
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                  </svg>
-                }
-                command={() => {
-                  const url = window.prompt('Enter image URL:');
-                  if (url) tiptapEditor.chain().focus().setImage({ src: url }).run();
-                }}
-                active={isActive('image')}
-                tooltip="Insert Image"
-              />
-
-              <FormatButton
-                icon={
-                  <span className="text-xs">💡</span>
-                }
-                command={() => tiptapEditor.chain().focus().toggleBlockquote().run()}
-                active={isActive('blockquote')}
-                tooltip="Callout Box"
-              />
-
-              <FormatButton
-                icon={
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="16 18 22 18 22 12" />
-                    <rect x="2" y="6" width="10" height="10" rx="1" />
-                  </svg>
-                }
-                command={() => tiptapEditor.chain().focus().toggleCodeBlock().run()}
-                active={isActive('codeBlock')}
-                tooltip="Code Block"
-              />
-
-              <div className="w-px h-5 bg-[var(--surface-4)] mx-1" />
-
-              <FormatButton
-                icon={
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-fuchsia-400">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                  </svg>
-                }
-                command={onToggleSnippets}
-                tooltip="Snippet Library"
-              />
-
-              <FormatButton
-                icon={
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
-                    <path d="M12 2v2" />
-                    <path d="M12 20v2" />
-                    <path d="M4.93 4.93l1.41 1.41" />
-                    <path d="M17.66 17.66l1.41 1.41" />
-                    <path d="M2 12h2" />
-                    <path d="M20 12h2" />
-                    <path d="M4.93 19.07l1.41-1.41" />
-                    <path d="M17.66 6.34l1.41-1.41" />
-                    <path d="M15 15l1-1" />
-                    <path d="M9 9l-1 1" />
-                  </svg>
-                }
-                command={() => {
-                  if (tiptapEditor) {
-                    const text = tiptapEditor.getText();
-                    // Basic pattern matching for auto-formatting
-                    if (text.toLowerCase().includes('api ') && text.toLowerCase().includes(' post')) {
-                      if (window.confirm("Found potential API shorthand. Auto-format document?")) {
-                          // We will implement the full engine logic in a separate utility call
-                          // but for now, trigger a custom event or logic
-                          tiptapEditor.commands.focus();
-                          const event = new CustomEvent('collabdocs:magic-format');
-                          window.dispatchEvent(event);
-                      }
-                    } else {
-                      alert("No obvious formatting patterns found yet. Try typing something like 'api login post username password'");
-                    }
-                  }
-                }}
-                tooltip="Magic Format (Auto-Structure)"
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Right section: Share, Export, Auth */}
-        <div className="flex items-center gap-2">
-          {/* Share Button */}
-          <button
-            onClick={handleShare}
-            className={`btn text-xs ${copied ? 'btn-primary' : 'btn-secondary'} transition-all`}
-            id="share-btn"
-          >
-            {copied ? (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                Copied!
-              </>
-            ) : (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                  <polyline points="16 6 12 2 8 6" />
-                  <line x1="12" y1="2" x2="12" y2="15" />
-                </svg>
-                Share
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={onExport}
-            className="btn btn-secondary text-xs"
-            id="export-btn"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            Export
-          </button>
-
-          {/* Chat Button */}
-          <button
-            onClick={onToggleChat}
-            className="btn btn-secondary text-xs"
-            id="chat-btn"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            Chat
-          </button>
-
-          {/* Separator */}
-          <div className="w-px h-6 bg-[var(--surface-4)]" />
-
-          {/* Auth Button */}
-          {user ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2 px-2 py-1 rounded-lg">
-                {user.photoURL ? (
-                  <img
-                    src={user.photoURL}
-                    alt={user.displayName}
-                    className="w-6 h-6 rounded-full ring-1 ring-[var(--surface-4)]"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-gradient-brand flex items-center justify-center text-[10px] font-bold text-white">
-                    {user.displayName?.[0]?.toUpperCase() || 'U'}
-                  </div>
-                )}
-                <span className="text-xs font-medium text-[var(--text-secondary)] hidden sm:inline">
-                  {user.displayName}
-                </span>
-              </div>
-              <button
-                onClick={onSignOut}
-                className="btn btn-ghost text-xs"
-                id="sign-out-btn"
-              >
-                Sign Out
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={onSignIn}
-              className="btn btn-secondary text-xs"
-              id="sign-in-btn"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              Sign In
-            </button>
           )}
         </div>
       </div>
@@ -428,21 +470,22 @@ export default function Toolbar({
 }
 
 Toolbar.propTypes = {
-  /** Current editor mode: 'richtext' or 'code' */
-  editorMode: PropTypes.oneOf(['richtext', 'code']).isRequired,
-  /** Callback to change editor mode */
-  onModeChange: PropTypes.func.isRequired,
+  isCodePage: PropTypes.bool,
+  codeLanguage: PropTypes.string,
+  onLanguageChange: PropTypes.func,
+  onRun: PropTypes.func,
   tiptapEditor: PropTypes.object,
-  /** Callback to open export panel */
   onExport: PropTypes.func.isRequired,
-  /** Callback to toggle chat sidebar */
   onToggleChat: PropTypes.func.isRequired,
-  /** Current Firebase user object (null if not logged in) */
+  onToggleSnippets: PropTypes.func.isRequired,
   user: PropTypes.object,
-  /** Callback for sign-in action */
   onSignIn: PropTypes.func.isRequired,
-  /** Callback for sign-out action */
   onSignOut: PropTypes.func.isRequired,
-  /** Current room ID */
   roomId: PropTypes.string.isRequired,
+  isFullscreen: PropTypes.bool,
+  onToggleFullscreen: PropTypes.func,
+  onToggleAi: PropTypes.func,
+  title: PropTypes.string,
+  onTitleChange: PropTypes.func,
+  onTitleBlur: PropTypes.func
 };

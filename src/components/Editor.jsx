@@ -17,6 +17,18 @@ import Highlight from '@tiptap/extension-highlight';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { lowlight } from 'lowlight';
 import Image from '@tiptap/extension-image';
+import TextStyle from '@tiptap/extension-text-style';
+import FontFamily from '@tiptap/extension-font-family';
+import { Color } from '@tiptap/extension-color';
+import TextAlign from '@tiptap/extension-text-align';
+import Link from '@tiptap/extension-link';
+import Youtube from '@tiptap/extension-youtube';
+import Placeholder from '@tiptap/extension-placeholder';
+import Typography from '@tiptap/extension-typography';
+import Subscript from '@tiptap/extension-subscript';
+import Superscript from '@tiptap/extension-superscript';
+import CharacterCount from '@tiptap/extension-character-count';
+import { FontSize, LineHeight, Indent, ParagraphSpacing } from '../lib/editorExtensions';
 import SlashCommands from './CommandMenu';
 import PropTypes from 'prop-types';
 
@@ -26,15 +38,51 @@ export default function Editor({ ydoc, provider, onEditorReady }) {
       StarterKit.configure({
         history: false,
         codeBlock: false,
+        heading: {
+          levels: [1, 2, 3, 4, 5, 6],
+        },
       }),
       Underline,
+      TextStyle,
+      FontFamily,
+      FontSize,
+      LineHeight,
+      Indent,
+      ParagraphSpacing,
+      Color,
+      TextAlign.configure({
+        types: ['heading', 'paragraph'],
+      }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'text-indigo-400 underline underline-offset-4 cursor-pointer',
+        },
+      }),
+      Youtube.configure({
+        inline: false,
+        width: 640,
+        height: 480,
+      }),
+      Subscript,
+      Superscript,
+      Typography,
+      CharacterCount,
+      Placeholder.configure({
+        placeholder: ({ node }) => {
+          if (node.type.name === 'heading') {
+            return 'Heading ' + node.attrs.level;
+          }
+          return "Press '/' for commands...";
+        },
+      }),
       TaskList,
       TaskItem.configure({ nested: true }),
       Table.configure({ resizable: true }),
       TableRow,
       TableHeader,
       TableCell,
-      Highlight,
+      Highlight.configure({ multicolor: true }),
       CodeBlockLowlight.configure({ lowlight }),
       Image.configure({ inline: true, allowBase64: true }),
       SlashCommands,
@@ -52,7 +100,8 @@ export default function Editor({ ydoc, provider, onEditorReady }) {
     ],
     editorProps: {
       attributes: {
-        class: 'focus:outline-none min-h-[500px]',
+        class: 'focus:outline-none min-h-[500px] pb-32',
+        spellcheck: 'true',
       },
     },
   });
@@ -75,12 +124,8 @@ export default function Editor({ ydoc, provider, onEditorReady }) {
   }
 
   return (
-    <div className="w-full flex justify-center animate-fade-in">
-      <div className="w-full max-w-3xl">
-        <div className="tiptap-editor">
-          <EditorContent editor={editor} />
-        </div>
-      </div>
+    <div className="tiptap-editor">
+      <EditorContent editor={editor} />
     </div>
   );
 }

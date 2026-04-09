@@ -41,9 +41,6 @@ export default function Home() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [filter, setFilter] = useState('all'); // 'all', 'doc', 'code'
   const [searchQuery, setSearchQuery] = useState('');
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [aiError, setAiError] = useState('');
 
   // Custom hook for user documents
   const { rooms: recentRooms, loading: roomsLoading, deleteRoom } = useUserRooms();
@@ -99,54 +96,6 @@ export default function Home() {
     }
   };
 
-  const handleGenerateAIBlueprint = async () => {
-    if (!aiPrompt.trim()) return;
-
-    // Rate Limiting Logic
-    const today = new Date().toDateString();
-    const stats = JSON.parse(localStorage.getItem('ai_gen_stats') || '{"date":"","count":0}');
-    
-    if (stats.date === today && stats.count >= 3) {
-      setAiError('Daily limit reached (3 per day). Please try again tomorrow!');
-      return;
-    }
-
-    setIsGenerating(true);
-    setAiError('');
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/ai/generate-blueprint`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPrompt.trim() })
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'AI Generation failed');
-
-      // Update Rate Limit Count
-      const newStats = {
-        date: today,
-        count: stats.date === today ? stats.count + 1 : 1
-      };
-      localStorage.setItem('ai_gen_stats', JSON.stringify(newStats));
-
-      const roomId = nanoid(10);
-      // Store the generated HTML for the handoff
-      sessionStorage.setItem(`pending_ai_content_${roomId}`, JSON.stringify({
-        title: data.title,
-        html: data.html
-      }));
-
-      setShowTemplates(false);
-      navigate(`/doc/${roomId}?ai=true`);
-    } catch (err) {
-      console.error('AI Error:', err);
-      setAiError(err.message);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   /** Join an existing document by room ID or full URL */
   const handleJoinDoc = () => {
@@ -531,45 +480,11 @@ export default function Home() {
                       <Sparkles size={32} className="text-[var(--brand-500)]" />
                       Template Library
                     </h2>
-                    <p className="text-[var(--text-muted)] font-medium mt-1">Start from a pre-defined structure or let AI design one.</p>
+                    <p className="text-[var(--text-muted)] font-medium mt-1">Start from a pre-defined structure or let us help you.</p>
                   </div>
                   <button onClick={() => setShowTemplates(false)} className="p-3 rounded-2xl bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-white transition-all hover:rotate-90">
                     <Plus size={24} className="rotate-45" />
                   </button>
-                </div>
-
-                {/* AI Generator Hero */}
-                <div className="relative group">
-                   <div className="absolute -inset-1 bg-gradient-to-r from-[var(--brand-500)] to-fuchsia-600 rounded-[2rem] blur opacity-20 group-focus-within:opacity-40 transition-opacity" />
-                   <div className="relative flex items-center gap-3 bg-[var(--surface-2)] border border-[var(--glass-border)] rounded-[1.5rem] p-2 pr-4 focus-within:border-[var(--brand-500)]/50 transition-all">
-                      <div className="w-12 h-12 rounded-[1rem] bg-[var(--surface-3)] flex items-center justify-center text-[var(--brand-500)] shrink-0 shadow-inner">
-                         <Wand2 size={22} className={isGenerating ? 'animate-spin' : ''} />
-                      </div>
-                      <input 
-                        type="text" 
-                        value={aiPrompt}
-                        maxLength={100}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleGenerateAIBlueprint()}
-                        placeholder="Describe a document (max 100 chars)..."
-                        className="flex-1 bg-transparent border-none outline-none text-white text-sm placeholder-[var(--text-muted)] py-3 px-2"
-                      />
-                      <div className="text-[10px] text-[var(--text-muted)] font-bold px-2 tabular-nums">
-                        {aiPrompt.length}/100
-                      </div>
-                      <button 
-                        onClick={handleGenerateAIBlueprint}
-                        disabled={isGenerating || !aiPrompt.trim()}
-                        className="btn btn-primary !h-11 !px-6 !rounded-xl !text-xs !font-black disabled:opacity-50 disabled:cursor-not-allowed group"
-                      >
-                         {isGenerating ? (
-                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                         ) : (
-                           <>Generate <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" /></>
-                         )}
-                      </button>
-                   </div>
-                   {aiError && <p className="mt-3 text-[10px] text-red-500 font-bold px-4">{aiError}</p>}
                 </div>
               </div>
 

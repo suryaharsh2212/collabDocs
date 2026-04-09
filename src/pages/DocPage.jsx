@@ -1,13 +1,3 @@
-/**
- * DocPage.jsx — Document Editor Page
- *
- * Layout:
- * - Top: Toolbar (mode toggle, formatting, share, export, auth)
- * - Center: Editor (TipTap rich text or Monaco code editor)
- * - Top-right overlay: UserPresence (connected user avatars)
- *
- * Connects to the Yjs room and manages editor mode state.
- */
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useYjs } from '../hooks/useYjs';
@@ -20,7 +10,10 @@ import UserPresence from '../components/UserPresence';
 import ExportPanel from '../components/ExportPanel';
 import ChatSidebar from '../components/ChatSidebar';
 import SnippetSidebar from '../components/SnippetSidebar';
+import Sidebar from '../components/Sidebar';
+import AiAssistant from '../components/AiAssistant';
 import LoginRequired from '../components/LoginRequired';
+import { ChevronRight, Minimize2 } from 'lucide-react';
 
 export default function DocPage() {
   const { roomId } = useParams();
@@ -37,7 +30,11 @@ export default function DocPage() {
   const [showExport, setShowExport] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showSnippets, setShowSnippets] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [tiptapEditor, setTiptapEditor] = useState(null);
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
+  const [showLineNumbers, setShowLineNumbers] = useState(false);
   
   const [lastChatMessage, setLastChatMessage] = useState(null);
   const [showChatNotif, setShowChatNotif] = useState(false);
@@ -92,13 +89,6 @@ export default function DocPage() {
     return 0;
   };
 
-  // We no longer redirect automatically, we show the LoginRequired component instead
-  // useEffect(() => {
-  //   if (!authLoading && !user) {
-  //     navigate(`/?redirect=${roomId}`, { replace: true });
-  //   }
-  // }, [authLoading, user, navigate, roomId]);
-
   useEffect(() => {
     const handleMagicFormat = () => {
       if (!tiptapEditor) return;
@@ -141,6 +131,12 @@ export default function DocPage() {
     window.addEventListener('collabdocs:magic-format', handleMagicFormat);
     return () => window.removeEventListener('collabdocs:magic-format', handleMagicFormat);
   }, [tiptapEditor]);
+
+  useEffect(() => {
+    const handleOpenAi = () => setIsAiAssistantOpen(true);
+    window.addEventListener('collabdocs:open-ai', handleOpenAi);
+    return () => window.removeEventListener('collabdocs:open-ai', handleOpenAi);
+  }, []);
 
   useEffect(() => {
     if (tiptapEditor) {
@@ -237,77 +233,106 @@ export default function DocPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--surface-0)] flex flex-col">
-      <Toolbar
-        isCodePage={false}
-        tiptapEditor={tiptapEditor}
-        onExport={() => setShowExport(true)}
-        onToggleChat={() => {
-          setShowChat((prev) => !prev);
-          setShowSnippets(false);
-        }}
-        onToggleSnippets={() => {
-          setShowSnippets((prev) => !prev);
-          setShowChat(false);
-        }}
-        user={user}
-        onSignIn={signInWithGoogle}
-        onSignOut={signOutUser}
-        roomId={roomId}
-      />
+    <div className={`h-screen overflow-hidden bg-[var(--surface-0)] flex flex-col ${isFullscreen ? 'blank-mode' : ''}`}>
+      {!isFullscreen && (
+        <Toolbar
+          isCodePage={false}
+          tiptapEditor={tiptapEditor}
+          onExport={() => setShowExport(true)}
+          onToggleChat={() => {
+            setShowChat((prev) => !prev);
+            setShowSnippets(false);
+          }}
+          onToggleSnippets={() => {
+            setShowSnippets((prev) => !prev);
+            setShowChat(false);
+          }}
+          user={user}
+          onSignIn={signInWithGoogle}
+          onSignOut={signOutUser}
+          roomId={roomId}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+          onToggleAi={() => setIsAiAssistantOpen(true)}
+          title={localTitle}
+          onTitleChange={setLocalTitle}
+          onTitleBlur={handleTitleBlur}
+        />
+      )}
 
-      <div className="flex-1 flex overflow-hidden">
+      {isFullscreen && (
+        <button 
+          onClick={() => setIsFullscreen(false)}
+          className="fixed top-4 right-4 z-50 p-2 glass rounded-full opacity-0 hover:opacity-100 transition-opacity"
+          title="Exit Fullscreen"
+        >
+           <Minimize2 size={16} />
+        </button>
+      )}
+
+      <main className="flex-1 flex overflow-hidden min-h-0">
+        {/* Left Side: Global Document Controls Sidebar */}
+        {!isFullscreen && (
+          <Sidebar 
+            editor={tiptapEditor} 
+            isVisible={showSidebar} 
+            onClose={() => setShowSidebar(false)} 
+            showLineNumbers={showLineNumbers}
+            onToggleLineNumbers={() => setShowLineNumbers(!showLineNumbers)}
+          />
+        )}
+        
+        {/* Toggle Sidebar Button (when hidden) */}
+        {!showSidebar && !isFullscreen && (
+          <button
+            onClick={() => setShowSidebar(true)}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-20 w-4 h-16 bg-[var(--surface-2)] border border-l-0 border-[var(--glass-border)] rounded-r-md flex items-center justify-center hover:bg-indigo-500/20 text-[var(--text-muted)] transition-all"
+          >
+            <ChevronRight size={12} />
+          </button>
+        )}
+
         <div className="flex-1 relative flex flex-col min-w-0">
-          <div className="px-4 py-1.5 flex items-center justify-between text-xs border-b border-[var(--surface-3)]">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-400'} ${isConnected ? 'animate-pulse' : ''}`} />
+          {!isFullscreen && (
+            <div className="px-4 py-1.5 flex items-center justify-between text-xs border-b border-[var(--surface-3)]">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-400'} ${isConnected ? 'animate-pulse' : ''}`} />
+                  <span className="text-[var(--text-muted)]">
+                    {isConnected ? 'Connected' : 'Connecting...'}
+                  </span>
+                </div>
+                <span className="text-[var(--text-muted)]">•</span>
                 <span className="text-[var(--text-muted)]">
-                  {isConnected ? 'Connected' : 'Connecting...'}
+                  Room: <span className="text-[var(--text-secondary)] font-mono">{roomId}</span>
                 </span>
               </div>
-              <span className="text-[var(--text-muted)]">•</span>
-              <span className="text-[var(--text-muted)]">
-                Room: <span className="text-[var(--text-secondary)] font-mono">{roomId}</span>
-              </span>
-            </div>
 
-            <div className="flex items-center gap-4">
-              {showChatNotif && lastChatMessage && (
-                <div 
-                  className="chat-notification-pill group"
-                  onClick={() => {
-                    setShowChat(true);
-                    setShowChatNotif(false);
-                  }}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                  <span className="opacity-80">New message from</span>
-                  <span className="font-black text-white">{lastChatMessage.author}</span>
-                  <span className="mx-1">•</span>
-                  <span className="opacity-90 italic">"{lastChatMessage.text.length > 20 ? lastChatMessage.text.substring(0, 20) + '...' : lastChatMessage.text}"</span>
-                </div>
-              )}
-              <UserPresence connectedUsers={connectedUsers} />
+              <div className="flex items-center gap-4">
+                {showChatNotif && lastChatMessage && (
+                  <div 
+                    className="chat-notification-pill group"
+                    onClick={() => {
+                      setShowChat(true);
+                      setShowChatNotif(false);
+                    }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                    <span className="opacity-80">New message from</span>
+                    <span className="font-black text-white">{lastChatMessage.author}</span>
+                    <span className="mx-1">•</span>
+                    <span className="opacity-90 italic">"{lastChatMessage.text.length > 20 ? lastChatMessage.text.substring(0, 20) + '...' : lastChatMessage.text}"</span>
+                  </div>
+                )}
+                <UserPresence connectedUsers={connectedUsers} />
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex-1 overflow-auto flex flex-col bg-[var(--surface-0)]">
+          <div className={`flex-1 overflow-auto flex flex-col bg-[var(--surface-0)] ${isFullscreen ? 'pt-20' : ''} ${showLineNumbers ? 'show-line-numbers' : ''}`}>
             {ydoc && provider ? (
               <div className="doc-workspace">
-                <div className="doc-paper animate-fade-in">
-                  <div className="doc-paper-header">
-                    <input
-                      type="text"
-                      value={localTitle}
-                      onChange={(e) => setLocalTitle(e.target.value)}
-                      onBlur={handleTitleBlur}
-                      onKeyDown={handleTitleKeyDown}
-                      className="text-4xl font-black bg-transparent border-none outline-none text-white w-full placeholder-[var(--text-muted)] focus:ring-0 text-left"
-                      placeholder="Document Title"
-                      id="doc-title-input"
-                    />
-                  </div>
+                <div className={`doc-paper animate-fade-in ${isFullscreen ? 'fullscreen-paper' : ''}`}>
                   <Editor
                     ydoc={ydoc}
                     provider={provider}
@@ -326,9 +351,15 @@ export default function DocPage() {
             )}
           </div>
         </div>
-      </div>
+      </main>
 
-      {showChat && (
+      <AiAssistant 
+        isOpen={isAiAssistantOpen} 
+        onClose={() => setIsAiAssistantOpen(false)} 
+        editor={tiptapEditor} 
+      />
+
+      {!isFullscreen && showChat && (
         <ChatSidebar
           ydoc={ydoc}
           provider={provider}
@@ -337,7 +368,7 @@ export default function DocPage() {
         />
       )}
 
-      {showSnippets && (
+      {!isFullscreen && showSnippets && (
         <SnippetSidebar
           tiptapEditor={tiptapEditor}
           onClose={() => setShowSnippets(false)}

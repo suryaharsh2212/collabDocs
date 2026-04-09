@@ -12,6 +12,15 @@ export default {
     // 1. Static Core Formatting Commands
     const coreCommands = [
       {
+        title: 'Ask AI Assistant',
+        description: 'Get help writing content.',
+        icon: <Zap size={16} className="text-indigo-400" />,
+        command: ({ editor, range }) => {
+          editor.chain().focus().deleteRange(range).run();
+          window.dispatchEvent(new CustomEvent('collabdocs:open-ai'));
+        },
+      },
+      {
         title: 'Heading 1',
         description: 'Large section heading.',
         icon: <Heading1 size={16} />,

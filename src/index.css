@@ -151,12 +151,46 @@ body {
    ======================== */
 .tiptap-editor .ProseMirror {
   min-height: 1000px; /* Encourages A4 feel */
-  padding: 4rem 5rem; /* Standard document gutters */
+  padding: 1rem 5rem 4rem 5rem; /* Integrated with header padding */
   outline: none;
   font-size: 1.05rem;
   line-height: 1.8;
   color: var(--text-primary);
-  background: var(--surface-1);
+  background: transparent !important;
+}
+
+.tiptap-editor .ProseMirror [data-placeholder]::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-muted);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Line Numbering System */
+.show-line-numbers .ProseMirror {
+  counter-reset: line;
+  padding-left: 6rem !important; /* Larger gutter for numbers */
+}
+
+.show-line-numbers .ProseMirror > * {
+  position: relative;
+}
+
+.show-line-numbers .ProseMirror > *::before {
+  counter-increment: line;
+  content: counter(line);
+  position: absolute;
+  left: -3.5rem;
+  top: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  text-align: right;
+  width: 2.5rem;
+  opacity: 0.4;
+  user-select: none;
+  pointer-events: none;
 }
 
 /* ========================
@@ -168,7 +202,9 @@ body {
   display: flex;
   justify-content: center;
   padding: 3rem 1rem;
-  min-height: 100%;
+  /* min-height: 100%;
+   */
+   height: fit-content;
 }
 
 .doc-paper {
