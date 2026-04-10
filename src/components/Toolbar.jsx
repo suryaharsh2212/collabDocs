@@ -39,10 +39,14 @@ export default function Toolbar({
   onToggleFind,
   onToggleInvite,
   isConnected,
-  connectedUsers
+  connectedUsers,
+  isRunning = false
 }) {
+
   const [copied, setCopied] = useState(false);
   const [activeInputType, setActiveInputType] = useState(null); // 'table', 'image', 'link', or null
+  const [showParticipants, setShowParticipants] = useState(false);
+
 
   /** Copy the current document URL to clipboard */
   const handleShare = useCallback(async () => {
@@ -479,12 +483,19 @@ export default function Toolbar({
                 />
                 <button
                   onClick={onRun}
-                  disabled={codeLanguage !== 'javascript'}
-                  className="btn h-7 px-3 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black uppercase tracking-widest border-none shadow-md"
+                  disabled={isRunning}
+                  className={`btn h-7 px-3 text-[10px] font-black uppercase tracking-widest border-none shadow-md transition-all ${
+                    isRunning ? 'bg-emerald-600/50 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'
+                  }`}
                 >
-                  <Play size={12} fill="currentColor" />
-                  Run
+                  {isRunning ? (
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Play size={12} fill="currentColor" />
+                  )}
+                  {isRunning ? 'Running...' : 'Run'}
                 </button>
+
                 <button
                   onClick={onToggleAi}
                   className="btn btn-primary h-7 px-3 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-md"
@@ -509,8 +520,51 @@ export default function Toolbar({
               </div>
 
               <div className="flex items-center gap-3">
-                <UserPresence connectedUsers={connectedUsers} />
+                <div className="relative">
+                  <div className="flex items-center gap-2">
+                    <UserPresence connectedUsers={connectedUsers} />
+                    <button 
+                      onClick={() => setShowParticipants(!showParticipants)}
+                      className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${showParticipants ? 'bg-indigo-500 text-white' : 'bg-[var(--surface-3)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--surface-4)]'}`}
+                      title="View Participants"
+                    >
+                      <ChevronDown size={14} className={`transition-transform duration-200 ${showParticipants ? 'rotate-180' : ''}`} />
+                    </button>
+                  </div>
+
+                  {showParticipants && (
+                    <div className="absolute top-full right-0 mt-2 w-56 bg-[var(--surface-1)] border border-[var(--glass-border)] rounded-xl shadow-2xl p-3 z-50 animate-zoom-in">
+                      <div className="flex items-center justify-between mb-3 px-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Active Now</span>
+                        <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded-full font-bold">
+                          {connectedUsers.length}
+                        </span>
+                      </div>
+                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                        {connectedUsers.map((u) => (
+                          <div key={u.clientId} className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-[var(--surface-2)] transition-colors group">
+                            <div 
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-black border border-white/10"
+                              style={{ backgroundColor: u.color + '22', color: u.color }}
+                            >
+                              {u.name?.[0]?.toUpperCase() || '?'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] font-bold text-white truncate flex items-center gap-1.5">
+                                {u.name}
+                                {u.isCurrentUser && <span className="text-[9px] opacity-40 font-medium">(You)</span>}
+                              </p>
+                            </div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="w-px h-4 bg-[var(--surface-4)]" />
+
                 <ToolbarButton 
                   icon={<MessageSquare size={16} />} 
                   onClick={onToggleChat} 

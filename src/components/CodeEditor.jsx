@@ -65,8 +65,11 @@ export default function CodeEditor({ ydoc, provider, language, onEditorReady }) 
     
     monaco.editor.setTheme(theme);
     setEditor(editorInstance);
+
     if (onEditorReady) onEditorReady(editorInstance);
   };
+
+
 
   useEffect(() => {
     if (editor) {
@@ -98,13 +101,69 @@ export default function CodeEditor({ ydoc, provider, language, onEditorReady }) 
     );
     bindingRef.current = binding;
 
+    // Dynamic Cursor CSS Injection
+    const styleId = 'y-monaco-cursor-dynamic';
+    let style = document.getElementById(styleId);
+    if (!style) {
+      style = document.createElement('style');
+      style.id = styleId;
+      document.head.appendChild(style);
+    }
+
+    const updateCursorStyles = () => {
+      const states = provider.awareness.getStates();
+      let css = '';
+      states.forEach((state, clientId) => {
+        if (state.user && clientId !== provider.awareness.clientID) {
+          const { name, color } = state.user;
+          css += `
+            .yRemoteSelection-${clientId} {
+              background-color: ${color}33;
+            }
+            .yRemoteSelectionHead-${clientId} {
+              position: absolute;
+              border-left: 2px solid ${color};
+              height: 100%;
+              box-sizing: border-box;
+              z-index: 10;
+            }
+            .yRemoteSelectionHead-${clientId}::after {
+              content: '${name}';
+              position: absolute;
+              background-color: ${color};
+              color: white;
+              font-size: 10px;
+              padding: 1px 6px;
+              border-radius: 4px 4px 4px 0px;
+              top: -16px;
+              left: -2px;
+              white-space: nowrap;
+              font-family: 'Inter', sans-serif;
+              font-weight: 800;
+              pointer-events: none;
+              box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              opacity: 1;
+            }
+          `;
+        }
+      });
+      style.innerHTML = css;
+    };
+
+    provider.awareness.on('change', updateCursorStyles);
+    updateCursorStyles(); // Initial burst
+
     return () => {
       if (binding) {
         binding.destroy();
         bindingRef.current = null;
       }
+      provider.awareness.off('change', updateCursorStyles);
     };
   }, [editor, ydoc, provider]);
+
 
   const handleCopy = async () => {
     if (!editor) return;
@@ -201,8 +260,9 @@ export default function CodeEditor({ ydoc, provider, language, onEditorReady }) 
             scrollBeyondLastLine: false,
             wordWrap: 'on',
             cursorBlinking: 'smooth',
-            cursorSmoothCaretAnimation: 'on',
+            cursorSmoothCaretAnimation: 'off',
             smoothScrolling: true,
+
             renderLineHighlight: 'gutter',
             bracketPairColorization: { enabled: true },
             automaticLayout: true,

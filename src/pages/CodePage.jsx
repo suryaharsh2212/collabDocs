@@ -35,7 +35,11 @@ export default function CodePage() {
   // AI Assistant state
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isCooldown, setIsCooldown] = useState(false);
   const [monacoEditor, setMonacoEditor] = useState(null);
+
+
 
 
   useEffect(() => {
@@ -127,42 +131,72 @@ export default function CodePage() {
     if (showChat) setShowChatNotif(false);
   }, [showChat]);
 
-  const handleRun = () => {
-    if (!ydoc) return;
+  const handleRun = async () => {
+    if (!ydoc || isRunning || isCooldown) return;
+    
+    setIsRunning(true);
     setShowConsole(true);
     
-    if (codeLanguage !== 'javascript') {
-      setLogs(prev => [...prev, { 
-        type: 'error', 
-        content: `Execution for '${codeLanguage}' is not yet supported. Currently only JavaScript is available.`,
-        timestamp: Date.now() 
-      }]);
-      return;
-    }
-
     const code = ydoc.getText('code').toString();
-    const newLogs = [];
-    
-    const customConsole = {
-      log: (...args) => {
-        newLogs.push({ type: 'log', content: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), timestamp: Date.now() });
-      },
-      error: (...args) => {
-        newLogs.push({ type: 'error', content: args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' '), timestamp: Date.now() });
-      },
-      warn: (...args) => {
-        newLogs.push({ type: 'log', content: `[WARN] ${args.map(a => String(a)).join(' ')}`, timestamp: Date.now() });
-      }
-    };
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
     try {
-      const runner = new Function('console', code);
-      runner(customConsole);
+      const response = await fetch(`${API_URL}/api/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          language: codeLanguage,
+          code: code
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Execution failed');
+      }
+
+      // Add result to logs
+      const timestamp = Date.now();
+      const newLogs = [];
+
+      if (data.stdout) {
+        newLogs.push({ type: 'log', content: data.stdout, timestamp });
+      }
+      if (data.stderr) {
+        newLogs.push({ type: 'error', content: data.stderr, timestamp });
+      }
+      if (!data.stdout && !data.stderr && data.output) {
+        newLogs.push({ type: 'log', content: data.output, timestamp });
+      } else if (!data.stdout && !data.stderr) {
+        newLogs.push({ type: 'log', content: 'Execution finished (no output)', timestamp });
+      }
+
+      // Success/Exit info
+      newLogs.push({ 
+        type: 'log', 
+        content: `--- Process finished with exit code ${data.code}) ---`, 
+        timestamp 
+      });
+
       setLogs(prev => [...prev, ...newLogs]);
+
     } catch (err) {
-      setLogs(prev => [...prev, ...newLogs, { type: 'error', content: err.message, timestamp: Date.now() }]);
+      console.error('Execution Error:', err);
+      setLogs(prev => [...prev, { 
+        type: 'error', 
+        content: `Runner: ${err.message}`, 
+        timestamp: Date.now() 
+      }]);
+    } finally {
+      setIsRunning(false);
+      // Start cooldown
+      setIsCooldown(true);
+      setTimeout(() => setIsCooldown(false), 3000); // 3 second cooldown
     }
   };
+
+
 
   if (authLoading) {
     return (
@@ -195,13 +229,17 @@ export default function CodePage() {
         roomId={roomId}
         isConnected={isConnected}
         connectedUsers={connectedUsers}
+        isRunning={isRunning || isCooldown}
         onToggleInvite={() => setIsInviteModalOpen(true)}
       />
+
 
 
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 relative flex flex-col min-w-0">
           <div className="flex-1 flex flex-col bg-[var(--surface-0)] relative">
+
+
             {ydoc && provider ? (
               <CodeEditor
                 ydoc={ydoc}
