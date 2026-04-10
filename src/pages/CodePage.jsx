@@ -11,7 +11,9 @@ import ExecutionConsole from '../components/ExecutionConsole';
 import ExportPanel from '../components/ExportPanel';
 import LoginRequired from '../components/LoginRequired';
 import AiAssistant from '../components/AiAssistant';
+import InviteModal from '../components/InviteModal';
 import { Sparkles } from 'lucide-react';
+
 
 export default function CodePage() {
   const { roomId } = useParams();
@@ -32,7 +34,9 @@ export default function CodePage() {
 
   // AI Assistant state
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [monacoEditor, setMonacoEditor] = useState(null);
+
 
   useEffect(() => {
     if (room && room.type !== 'code') {
@@ -191,7 +195,9 @@ export default function CodePage() {
         roomId={roomId}
         isConnected={isConnected}
         connectedUsers={connectedUsers}
+        onToggleInvite={() => setIsInviteModalOpen(true)}
       />
+
 
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 relative flex flex-col min-w-0">
@@ -245,6 +251,17 @@ export default function CodePage() {
         mode="code"
         variant="sidebar"
       />
+
+      <InviteModal 
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        roomId={roomId}
+        docTitle={localTitle || 'Untitled Session'}
+        isCode={true}
+        senderName={user?.displayName || 'A colleague'}
+      />
+
     </div>
+
   );
 }

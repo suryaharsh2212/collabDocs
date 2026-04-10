@@ -4,12 +4,15 @@ import {
   List, Settings, Info, 
   Type, Layout, Eye,
   Navigation, Hash, Clock, FileText,
-  MousePointer2, Upload, Sparkles, Loader2
+  MousePointer2, Upload, Sparkles, Loader2, Users
 } from 'lucide-react';
+
 import { extractTextFromPDF } from '../utils/pdfExtractor';
 
-export default function Sidebar({ editor, onClose, isVisible, showLineNumbers, onToggleLineNumbers, showPageNumbers, onTogglePageNumbers }) {
-  const [activeTab, setActiveTab] = useState('outline');
+
+
+export default function Sidebar({ editor, onClose, isVisible, showLineNumbers, onToggleLineNumbers, showPageNumbers, onTogglePageNumbers, activeTab, onTabChange }) {
+
   const [headings, setHeadings] = useState([]);
   const [importStatus, setImportStatus] = useState(null); // null | 'extracting' | 'reconstructing'
 
@@ -109,7 +112,7 @@ export default function Sidebar({ editor, onClose, isVisible, showLineNumbers, o
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => onTabChange(tab.id)}
             className={`
               flex-1 py-3 flex flex-col items-center gap-1 transition-all
               ${activeTab === tab.id 
@@ -246,6 +249,8 @@ export default function Sidebar({ editor, onClose, isVisible, showLineNumbers, o
           </div>
         )}
       </div>
+
+
 
       {/* AI Magic Import Portal */}
       <div className="mx-4 mb-4">

@@ -37,6 +37,7 @@ export default function Toolbar({
   onTitleChange,
   onTitleBlur,
   onToggleFind,
+  onToggleInvite,
   isConnected,
   connectedUsers
 }) {
@@ -162,10 +163,10 @@ export default function Toolbar({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleShare}
-              className={`btn h-8 px-4 text-[10px] font-black uppercase tracking-widest ${copied ? 'btn-primary' : 'btn-secondary'} transition-all`}
+              onClick={onToggleInvite}
+              className={`btn h-8 px-4 text-[10px] font-black uppercase tracking-widest btn-secondary transition-all`}
             >
-              {copied ? 'Copied' : 'Invite'}
+              Invite
             </button>
             <button onClick={onExport} className="btn h-8 px-4 text-[10px] font-black uppercase tracking-widest btn-secondary">
               Export

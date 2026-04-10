@@ -16,7 +16,9 @@ import LoginRequired from '../components/LoginRequired';
 import PageGuides from '../components/PageGuides';
 import FindReplace from '../components/FindReplace';
 import ContextMenus from '../components/ContextMenus';
+import InviteModal from '../components/InviteModal';
 import { ChevronRight, Minimize2 } from 'lucide-react';
+
 
 export default function DocPage() {
   const { roomId } = useParams();
@@ -40,6 +42,10 @@ export default function DocPage() {
   const [showLineNumbers, setShowLineNumbers] = useState(false);
   const [showPageNumbers, setShowPageNumbers] = useState(true);
   const [showFindReplace, setShowFindReplace] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState('outline');
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+
+
   
   const [lastChatMessage, setLastChatMessage] = useState(null);
   const [showChatNotif, setShowChatNotif] = useState(false);
@@ -142,6 +148,12 @@ export default function DocPage() {
     window.addEventListener('collabdocs:open-ai', handleOpenAi);
     return () => window.removeEventListener('collabdocs:open-ai', handleOpenAi);
   }, []);
+
+  const handleOpenInvite = () => {
+    setIsInviteModalOpen(true);
+  };
+
+
 
   useEffect(() => {
     if (tiptapEditor) {
@@ -263,6 +275,7 @@ export default function DocPage() {
           onTitleChange={setLocalTitle}
           onTitleBlur={handleTitleBlur}
           onToggleFind={() => setShowFindReplace((prev) => !prev)}
+          onToggleInvite={handleOpenInvite}
         />
       )}
 
@@ -290,11 +303,14 @@ export default function DocPage() {
             editor={tiptapEditor} 
             isVisible={showSidebar} 
             onClose={() => setShowSidebar(false)} 
+            activeTab={sidebarTab}
+            onTabChange={setSidebarTab}
             showLineNumbers={showLineNumbers}
             onToggleLineNumbers={() => setShowLineNumbers(!showLineNumbers)}
             showPageNumbers={showPageNumbers}
             onTogglePageNumbers={() => setShowPageNumbers(!showPageNumbers)}
           />
+
         )}
         
         {/* Toggle Sidebar Button (when hidden) */}
@@ -400,7 +416,18 @@ export default function DocPage() {
           onClose={() => setShowExport(false)}
         />
       )}
+
+      <InviteModal 
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        roomId={roomId}
+        docTitle={localTitle || 'Untitled Document'}
+        isCode={false}
+        senderName={user?.displayName || 'A User From CollabDocs'}
+      />
+
     </div>
+
   );
 }
 
