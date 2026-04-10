@@ -4,12 +4,48 @@ import {
   List, Settings, Info, 
   Type, Layout, Eye,
   Navigation, Hash, Clock, FileText,
-  MousePointer2
+  MousePointer2, Upload, Sparkles, Loader2
 } from 'lucide-react';
+import { extractTextFromPDF } from '../utils/pdfExtractor';
 
-export default function Sidebar({ editor, onClose, isVisible, showLineNumbers, onToggleLineNumbers }) {
+export default function Sidebar({ editor, onClose, isVisible, showLineNumbers, onToggleLineNumbers, showPageNumbers, onTogglePageNumbers }) {
   const [activeTab, setActiveTab] = useState('outline');
   const [headings, setHeadings] = useState([]);
+  const [importStatus, setImportStatus] = useState(null); // null | 'extracting' | 'reconstructing'
+
+  const handleImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !editor) return;
+
+    setImportStatus('extracting');
+    try {
+      // 1. Local Extraction
+      const rawText = await extractTextFromPDF(file);
+      
+      // 2. AI Reconstruction
+      setImportStatus('reconstructing');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${API_URL}/api/import/pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: rawText }),
+      });
+
+      if (!response.ok) throw new Error('AI reconstruction failed');
+      const data = await response.json();
+
+      // 3. Update Editor (Replace Content)
+      editor.commands.setContent(data.html);
+      
+    } catch (err) {
+      console.error('Import Error:', err);
+      alert('Failed to import PDF. Try a different file or check your connection.');
+    } finally {
+      setImportStatus(null);
+      // Reset file input
+      e.target.value = '';
+    }
+  };
 
   // Generate Document Outline
   useEffect(() => {
@@ -144,6 +180,15 @@ export default function Sidebar({ editor, onClose, isVisible, showLineNumbers, o
                     <div className="absolute right-1 top-0.5 w-3 h-3 bg-white rounded-full shadow-sm" />
                   </div>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--text-secondary)] font-medium">Page Numbers</span>
+                  <div 
+                    onClick={onTogglePageNumbers}
+                    className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors ${showPageNumbers ? 'bg-indigo-500' : 'bg-[var(--surface-4)]'}`}
+                  >
+                    <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${showPageNumbers ? 'right-1' : 'left-1'}`} />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -200,6 +245,54 @@ export default function Sidebar({ editor, onClose, isVisible, showLineNumbers, o
             </div>
           </div>
         )}
+      </div>
+
+      {/* AI Magic Import Portal */}
+      <div className="mx-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em]">AI Intelligence</span>
+          <span className="text-[7px] font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded uppercase tracking-widest border border-indigo-500/20">Beta (Text Only)</span>
+        </div>
+        <div className={`relative group h-12 rounded-xl border transition-all duration-500 overflow-hidden ${importStatus ? 'bg-indigo-500/10 border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.2)]' : 'bg-white/5 border-white/10 hover:border-indigo-500/30'}`}>
+          {/* Magic Shimmer Effect */}
+          {importStatus && <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }} />}
+
+          <label className="absolute inset-0 cursor-pointer flex items-center px-4 gap-3">
+            <input 
+              type="file" 
+              accept=".pdf" 
+              onChange={handleImport}
+              className="hidden"
+              disabled={!!importStatus}
+            />
+            
+            <div className={`flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center transition-all ${importStatus ? 'bg-indigo-500 animate-bounce' : 'bg-white/5 text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white'}`}>
+              {importStatus ? <Sparkles size={14} className="text-white" /> : <Upload size={14} />}
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+              {importStatus ? (
+                <p className="text-[10px] font-black text-white uppercase tracking-widest whitespace-nowrap animate-pulse">
+                  Magic: Reading & Transforming...
+                </p>
+              ) : (
+                <>
+                  <p className="text-[10px] font-black text-white uppercase tracking-widest leading-none text-wrap pr-4">Extract Text From PDF</p>
+                  {/* <p className="text-[8px] text-[var(--text-muted)] font-medium truncate uppercase tracking-tighter">AI Reconstruction Portal</p>  */}
+                </>
+              )}
+            </div>
+
+            {!importStatus && (
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                 <Sparkles size={12} className="text-indigo-400 animate-pulse" />
+              </div>
+            )}
+          </label>
+        </div>
+        <p className="mt-2 text-[7px] text-white/20 italic leading-tight px-1">
+          * Beta: Layouts with complex graphics or images may be skipped.
+        </p>
       </div>
 
       {/* Footer Info */}

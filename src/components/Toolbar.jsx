@@ -11,10 +11,11 @@ import {
   Highlighter, Palette, ChevronDown, Plus, MoreHorizontal,
   Baseline, ArrowUpToLine, ArrowDownToLine,
   Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
-  Trash2, Sparkles, IndentDecrease, IndentIncrease, BetweenVerticalStart
+  Trash2, Sparkles, IndentDecrease, IndentIncrease, BetweenVerticalStart, Search
 } from 'lucide-react';
 import { ToolbarButton, ToolbarDropdown, ToolbarColorPicker } from './EditorUiComponents';
 import UserPresence from './UserPresence';
+import PremiumInput from './PremiumInput';
 
 export default function Toolbar({
   isCodePage = false,
@@ -35,10 +36,12 @@ export default function Toolbar({
   title,
   onTitleChange,
   onTitleBlur,
+  onToggleFind,
   isConnected,
   connectedUsers
 }) {
   const [copied, setCopied] = useState(false);
+  const [activeInputType, setActiveInputType] = useState(null); // 'table', 'image', 'link', or null
 
   /** Copy the current document URL to clipboard */
   const handleShare = useCallback(async () => {
@@ -203,6 +206,11 @@ export default function Toolbar({
                   onClick={() => tiptapEditor.chain().focus().redo().run()} 
                   tooltip="Redo (Ctrl+Y)"
                 />
+                <ToolbarButton 
+                  icon={<Search size={16} />} 
+                  onClick={onToggleFind} 
+                  tooltip="Find & Replace"
+                />
               </div>
 
               <div className="w-px h-4 bg-[var(--surface-3)] mx-1" />
@@ -362,6 +370,32 @@ export default function Toolbar({
                   active={tiptapEditor.isActive('taskList')}
                   tooltip="Task List"
                 />
+                <ToolbarButton 
+                  icon={<List size={16} className="text-indigo-400" />} 
+                  onClick={() => {
+                    const { doc } = tiptapEditor.state;
+                    const headings = [];
+                    doc.descendants((node, pos) => {
+                      if (node.type.name === 'heading') {
+                        headings.push({ level: node.attrs.level, text: node.textContent, pos });
+                      }
+                    });
+
+                    if (headings.length === 0) {
+                      alert('No headings found to generate TOC');
+                      return;
+                    }
+
+                    let tocHtml = '<h3>Table of Contents</h3><ul>';
+                    headings.forEach(h => {
+                      tocHtml += `<li style="margin-left: ${(h.level - 1) * 20}px"><a href="#${h.pos}">${h.text}</a></li>`;
+                    });
+                    tocHtml += '</ul><hr/>';
+                    
+                    tiptapEditor.chain().focus().insertContentAt(0, tocHtml).run();
+                  }}
+                  tooltip="Insert Table of Contents"
+                />
               </div>
 
               <div className="w-px h-4 bg-[var(--surface-3)] mx-1" />
@@ -370,36 +404,18 @@ export default function Toolbar({
               <div className="flex items-center">
                 <ToolbarButton 
                   icon={<TableIcon size={16} />} 
-                  onClick={() => {
-                    const rows = window.prompt('Enter number of rows:', '3');
-                    const cols = window.prompt('Enter number of columns:', '3');
-                    if (rows && cols) {
-                      tiptapEditor.chain().focus().insertTable({ rows: parseInt(rows), cols: parseInt(cols), withHeaderRow: true }).run();
-                    }
-                  }} 
+                  onClick={() => setActiveInputType('table')} 
                   active={tiptapEditor.isActive('table')}
                   tooltip="Insert Table"
                 />
                 <ToolbarButton 
                   icon={<ImageIcon size={16} />} 
-                  onClick={() => {
-                    const url = window.prompt('Enter image URL:');
-                    if (url) tiptapEditor.chain().focus().setImage({ src: url }).run();
-                  }} 
+                  onClick={() => setActiveInputType('image')} 
                   tooltip="Insert Image"
                 />
                 <ToolbarButton 
                   icon={<LinkIcon size={16} />} 
-                  onClick={() => {
-                    const previousUrl = tiptapEditor.getAttributes('link').href;
-                    const url = window.prompt('Enter URL:', previousUrl);
-                    if (url === null) return;
-                    if (url === '') {
-                        tiptapEditor.chain().focus().extendMarkRange('link').unsetLink().run();
-                        return;
-                    }
-                    tiptapEditor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-                  }} 
+                  onClick={() => setActiveInputType('link')} 
                   active={tiptapEditor.isActive('link')}
                   tooltip="Link"
                 />
@@ -509,6 +525,28 @@ export default function Toolbar({
           )}
         </div>
       </div>
+
+      {activeInputType && (
+        <PremiumInput 
+          type={activeInputType}
+          onClose={() => setActiveInputType(null)}
+          initialValue={activeInputType === 'link' ? tiptapEditor.getAttributes('link').href : ''}
+          onSubmit={(data) => {
+            if (activeInputType === 'table') {
+              tiptapEditor.chain().focus().insertTable({ rows: data.rows, cols: data.cols, withHeaderRow: true }).run();
+            } else if (activeInputType === 'image') {
+              tiptapEditor.chain().focus().setImage({ src: data }).run();
+            } else if (activeInputType === 'link') {
+              if (data === '') {
+                tiptapEditor.chain().focus().extendMarkRange('link').unsetLink().run();
+              } else {
+                tiptapEditor.chain().focus().extendMarkRange('link').setLink({ href: data }).run();
+              }
+            }
+            setActiveInputType(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -531,5 +569,6 @@ Toolbar.propTypes = {
   onToggleAi: PropTypes.func,
   title: PropTypes.string,
   onTitleChange: PropTypes.func,
-  onTitleBlur: PropTypes.func
+  onTitleBlur: PropTypes.func,
+  onToggleFind: PropTypes.func
 };

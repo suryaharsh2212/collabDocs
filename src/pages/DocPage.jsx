@@ -13,6 +13,9 @@ import SnippetSidebar from '../components/SnippetSidebar';
 import Sidebar from '../components/Sidebar';
 import AiAssistant from '../components/AiAssistant';
 import LoginRequired from '../components/LoginRequired';
+import PageGuides from '../components/PageGuides';
+import FindReplace from '../components/FindReplace';
+import ContextMenus from '../components/ContextMenus';
 import { ChevronRight, Minimize2 } from 'lucide-react';
 
 export default function DocPage() {
@@ -35,6 +38,8 @@ export default function DocPage() {
   const [tiptapEditor, setTiptapEditor] = useState(null);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [showLineNumbers, setShowLineNumbers] = useState(false);
+  const [showPageNumbers, setShowPageNumbers] = useState(true);
+  const [showFindReplace, setShowFindReplace] = useState(false);
   
   const [lastChatMessage, setLastChatMessage] = useState(null);
   const [showChatNotif, setShowChatNotif] = useState(false);
@@ -257,6 +262,14 @@ export default function DocPage() {
           title={localTitle}
           onTitleChange={setLocalTitle}
           onTitleBlur={handleTitleBlur}
+          onToggleFind={() => setShowFindReplace((prev) => !prev)}
+        />
+      )}
+
+      {showFindReplace && tiptapEditor && (
+        <FindReplace 
+          editor={tiptapEditor} 
+          onClose={() => setShowFindReplace(false)} 
         />
       )}
 
@@ -279,6 +292,8 @@ export default function DocPage() {
             onClose={() => setShowSidebar(false)} 
             showLineNumbers={showLineNumbers}
             onToggleLineNumbers={() => setShowLineNumbers(!showLineNumbers)}
+            showPageNumbers={showPageNumbers}
+            onTogglePageNumbers={() => setShowPageNumbers(!showPageNumbers)}
           />
         )}
         
@@ -333,6 +348,8 @@ export default function DocPage() {
             {ydoc && provider ? (
               <div className="doc-workspace">
                 <div className={`doc-paper animate-fade-in ${isFullscreen ? 'fullscreen-paper' : ''}`}>
+                  <PageGuides editor={tiptapEditor} showNumbers={showPageNumbers} />
+                  <ContextMenus editor={tiptapEditor} />
                   <Editor
                     ydoc={ydoc}
                     provider={provider}

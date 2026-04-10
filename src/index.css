@@ -72,6 +72,7 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: var(--theme-transition);
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -209,11 +210,13 @@ body {
 
 .doc-paper {
   width: 816px; /* A4 Width at 96 DPI */
+  min-height: 1123px; /* Ensure at least one page */
   background: var(--surface-1);
   box-shadow: 0 0 0 1px var(--surface-3), 0 20px 50px rgba(0, 0, 0, 0.5);
   border-radius: 4px;
   position: relative;
   transition: box-shadow 0.3s ease;
+  overflow: hidden;
 }
 
 .doc-paper:hover {
@@ -224,6 +227,66 @@ body {
   padding: 4rem 5rem 1rem 5rem;
   background: var(--surface-1);
   border-radius: 4px 4px 0 0;
+}
+
+/* Page Indicator & Breaks */
+.page-break-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  border-top: 1px dashed var(--surface-4);
+  pointer-events: none;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 1rem;
+}
+
+.page-break-indicator::after {
+  content: 'Page Break';
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface-1);
+  padding: 0 8px;
+  transform: translateY(-50%);
+}
+
+.page-number-label {
+  position: absolute;
+  right: 2rem;
+  bottom: 1.5rem;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-muted);
+  pointer-events: none;
+  z-index: 10;
+}
+
+@media print {
+  .doc-paper {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+  }
+  .page-break-indicator {
+    display: none;
+  }
+}
+
+/* Find & Replace Bar */
+.find-replace-bar {
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideDown 0.3s ease-out forwards;
+  z-index: 39;
 }
 
 /* ========================
@@ -260,7 +323,7 @@ body {
 }
 
 @keyframes slideSidebarIn {
-  from { opacity: 0; transform: translateX(100%); }
+  from { opacity: 0; transform: translateX(20px); }
   to { opacity: 1; transform: translateX(0); }
 }
 
@@ -363,11 +426,17 @@ body {
   max-width: 100%;
   height: auto;
   border-radius: 8px;
-  margin-bottom: 1rem;
+  /* margin-bottom handled by block layout */
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   border: 1px solid var(--surface-3);
   display: block;
+  transition: all 0.3s ease;
 }
+
+/* Image alignment helpers (handled by NodeView but keeping these for safety) */
+.tiptap-editor .ProseMirror [style*="text-align: center"] img { margin-left: auto !important; margin-right: auto !important; }
+.tiptap-editor .ProseMirror [style*="text-align: right"] img { margin-left: auto !important; margin-right: 0 !important; }
+.tiptap-editor .ProseMirror [style*="text-align: left"] img { margin-left: 0 !important; margin-right: auto !important; }
 
 .tiptap-editor .ProseMirror img.ProseMirror-selectednode {
   outline: 3px solid var(--brand-500);
@@ -399,6 +468,49 @@ body {
   overflow: hidden;
   margin-bottom: 1rem;
   border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+/* Table alignment helpers */
+.tiptap-editor .ProseMirror div[data-type="table-wrapper"] {
+  display: flex;
+}
+.tiptap-editor .ProseMirror div[data-type="table-wrapper"][style*="text-align: center"] table { margin-left: auto !important; margin-right: auto !important; }
+.tiptap-editor .ProseMirror div[data-type="table-wrapper"][style*="text-align: right"] table { margin-left: auto !important; margin-right: 0 !important; }
+.tiptap-editor .ProseMirror div[data-type="table-wrapper"][style*="text-align: left"] table { margin-left: 0 !important; margin-right: auto !important; }
+
+/* Table Resizing Styles */
+.tiptap-editor .ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: var(--brand-500);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.tiptap-editor .ProseMirror .resize-cursor {
+  cursor: ew-resize;
+  cursor: col-resize;
+}
+
+.tiptap-editor .ProseMirror table th:hover .column-resize-handle,
+.tiptap-editor .ProseMirror table td:hover .column-resize-handle {
+  opacity: 0.5;
+}
+
+.tiptap-editor .ProseMirror table .selectedCell::after {
+  z-index: 2;
+  background: rgba(99, 102, 241, 0.1);
+  content: "";
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  position: absolute;
 }
 
 .tiptap-editor .ProseMirror table td,
@@ -486,8 +598,8 @@ body {
    Animation Keyframes
    ======================== */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes fadeInScale {
@@ -879,6 +991,25 @@ body {
 .ai-report-content strong {
   color: #fff;
   font-weight: 700;
+}
+
+@keyframes loading-bar {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-loading-bar {
+  animation: loading-bar 2s infinite ease-in-out;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2.5s infinite linear;
 }
 
 

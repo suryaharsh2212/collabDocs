@@ -199,3 +199,30 @@ export const ParagraphSpacing = Extension.create({
     };
   },
 });
+
+export const GlobalAlignment = Extension.create({
+  name: 'globalAlignment',
+
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['heading', 'paragraph', 'image', 'table'],
+        attributes: {
+          textAlign: {
+            default: 'left',
+            parseHTML: element => element.style.textAlign || 'left',
+            renderHTML: attributes => {
+              if (!attributes.textAlign || attributes.textAlign === 'left') {
+                return {};
+              }
+
+              return {
+                style: `text-align: ${attributes.textAlign}`,
+              };
+            },
+          },
+        },
+      },
+    ];
+  },
+});

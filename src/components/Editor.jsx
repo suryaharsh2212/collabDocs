@@ -16,7 +16,7 @@ import TableHeader from '@tiptap/extension-table-header';
 import Highlight from '@tiptap/extension-highlight';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { lowlight } from 'lowlight';
-import Image from '@tiptap/extension-image';
+import { ResizableImage } from '../lib/ResizableImage';
 import TextStyle from '@tiptap/extension-text-style';
 import FontFamily from '@tiptap/extension-font-family';
 import { Color } from '@tiptap/extension-color';
@@ -28,7 +28,7 @@ import Typography from '@tiptap/extension-typography';
 import Subscript from '@tiptap/extension-subscript';
 import Superscript from '@tiptap/extension-superscript';
 import CharacterCount from '@tiptap/extension-character-count';
-import { FontSize, LineHeight, Indent, ParagraphSpacing } from '../lib/editorExtensions';
+import { FontSize, LineHeight, Indent, ParagraphSpacing, GlobalAlignment } from '../lib/editorExtensions';
 import SlashCommands from './CommandMenu';
 import PropTypes from 'prop-types';
 
@@ -49,9 +49,10 @@ export default function Editor({ ydoc, provider, onEditorReady }) {
       LineHeight,
       Indent,
       ParagraphSpacing,
+      GlobalAlignment,
       Color,
       TextAlign.configure({
-        types: ['heading', 'paragraph'],
+        types: ['heading', 'paragraph', 'image', 'table'],
       }),
       Link.configure({
         openOnClick: false,
@@ -84,7 +85,7 @@ export default function Editor({ ydoc, provider, onEditorReady }) {
       TableCell,
       Highlight.configure({ multicolor: true }),
       CodeBlockLowlight.configure({ lowlight }),
-      Image.configure({ inline: true, allowBase64: true }),
+      ResizableImage.configure({ inline: false, allowBase64: true }),
       SlashCommands,
       Collaboration.configure({
         document: ydoc,
